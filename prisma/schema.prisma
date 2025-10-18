@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  CUSTOMER
+}
+
+enum RackStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum TransactionStatus {
+  CREATED
+  IN_PROGRESS
+  READY_FOR_PICKUP
+  PICKED_UP
+  CANCELLED
+}
+
+model User {
+  id       String  @id @default(uuid())
+  name     String
+  email    String  @unique
+  password String?
+  role     Role    @default(CUSTOMER)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relation
+  transactions       Transaction[]
+  TransactionHistory TransactionHistory[]
+
+  @@map("users")
+}
+
+model Rack {
+  id       String     @id @default(uuid())
+  code     String     @unique
+  name     String?
+  location String?
+  status   RackStatus @default(AVAILABLE)
+
+  // relation
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("racks")
+}
+
+model Transaction {
+  id      String            @id @default(uuid())
+  invoice String            @unique
+  userId  String?
+  rackId  String?
+  status  TransactionStatus @default(CREATED)
+
+  price        Int // base price
+  finalPrice   Int // setelah diskon/promo
+  promoApplied Boolean @default(false)
+
+  // QR & Pickup
+  qrCodeData String @unique
+
+  // Timestamps status penting (opsional tapi berguna untuk audit/riwayat)
+  inProgressAt DateTime?
+  readyAt      DateTime?
+  pickedUpAt   DateTime?
+  cancelledAt  DateTime?
+
+  // Snapshot data customer (agar histori tetap, walau user update profil)
+  customerName  String?
+  customerEmail String?
+
+  // Relasi
+  customer User?             @relation(fields: [userId], references: [id])
+  rack     Rack?             @relation(fields: [rackId], references: [id])
+  items    TransactionItem[]
+
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  TransactionHistory TransactionHistory[]
+
+  @@index([status])
+  @@index([rackId])
+  @@index([userId])
+  @@map("transactions")
+}
+
+// ---- TransactionItem (detail layanan/barang per transaksi) ----
+model TransactionItem {
+  id            String @id @default(uuid())
+  transactionId String
+  name          String // contoh: "Cuci Premium", "Repaint", "Deep Clean"
+  qty           Int    @default(1)
+  unitPrice     Int // harga satuan
+  lineTotal     Int // qty * unitPrice (disimpan untuk laporan cepat)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@map("transaction_items")
+}
+
+model TransactionHistory {
+  id             String             @id @default(uuid())
+  transactionId  String
+  previousStatus TransactionStatus?
+  newStatus      TransactionStatus
+
+  note        String?
+  metadata    Json?
+  actorUserId String?
+  actorRole   Role?
+  changedAt   DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  actor       User?       @relation(fields: [actorUserId], references: [id])
+
+  @@index([transactionId])
+  @@index([newStatus, changedAt])
+  @@map("transaction_histories")
+}
