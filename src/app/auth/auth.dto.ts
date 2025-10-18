@@ -1,3 +1,5 @@
+import { Role } from "@prisma/client";
+
 export interface RegisterDTO {
     name: string;
     email: string;
@@ -8,6 +10,7 @@ export interface RegisterDTO {
 export interface LoginDTO {
     email: string;
     password: string;
+    role: Role
   }
   
 export interface CustomerOtpRequestDTO {

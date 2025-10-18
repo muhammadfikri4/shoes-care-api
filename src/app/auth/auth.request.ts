@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import Joi from "joi";
 
 export const registerSchema = Joi.object({
@@ -9,6 +10,7 @@ export const registerSchema = Joi.object({
 export const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().required(),
+    role: Joi.string().valid(...Object.values(Role)).required(),
   });
   
 export const otpRequestSchema = Joi.object({

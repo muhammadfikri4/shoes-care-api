@@ -5,5 +5,6 @@ export const getUserProfile = (data: User) => {
         id: data.id,
         name: data.name,
         email: data.email,
+        role: data.role,
     }
 }

@@ -27,6 +27,12 @@ enum TransactionStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  QRIS
+  CASH
+  TRANSFER
+}
+
 model User {
   id       String  @id @default(uuid())
   name     String
@@ -41,6 +47,8 @@ model User {
   // relation
   transactions       Transaction[]
   TransactionHistory TransactionHistory[]
+  Customer           Customer?
+  Promo              Promo[]
 
   @@map("users")
 }
@@ -62,15 +70,19 @@ model Rack {
 }
 
 model Transaction {
-  id      String            @id @default(uuid())
-  invoice String            @unique
-  userId  String?
-  rackId  String?
-  status  TransactionStatus @default(CREATED)
+  id         String            @id @default(uuid())
+  invoice    String            @unique
+  userId     String?
+  customerId String?
+  rackId     String?
+  status     TransactionStatus @default(CREATED)
 
   price        Int // base price
   finalPrice   Int // setelah diskon/promo
   promoApplied Boolean @default(false)
+
+  // Payment & customer snapshot
+  paymentMethod PaymentMethod?
 
   // QR & Pickup
   qrCodeData String @unique
@@ -84,11 +96,13 @@ model Transaction {
   // Snapshot data customer (agar histori tetap, walau user update profil)
   customerName  String?
   customerEmail String?
+  customerPhone String?
 
   // Relasi
-  customer User?             @relation(fields: [userId], references: [id])
-  rack     Rack?             @relation(fields: [rackId], references: [id])
-  items    TransactionItem[]
+  customer        User?             @relation(fields: [userId], references: [id])
+  customerProfile Customer?         @relation(fields: [customerId], references: [id])
+  rack            Rack?             @relation(fields: [rackId], references: [id])
+  items           TransactionItem[]
 
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
@@ -97,17 +111,21 @@ model Transaction {
   @@index([status])
   @@index([rackId])
   @@index([userId])
+  @@index([customerId])
   @@map("transactions")
 }
 
 // ---- TransactionItem (detail layanan/barang per transaksi) ----
 model TransactionItem {
-  id            String @id @default(uuid())
+  id            String  @id @default(uuid())
   transactionId String
   name          String // contoh: "Cuci Premium", "Repaint", "Deep Clean"
-  qty           Int    @default(1)
+  qty           Int     @default(1)
   unitPrice     Int // harga satuan
   lineTotal     Int // qty * unitPrice (disimpan untuk laporan cepat)
+  estimateDays  Int?
+  photoUrl      String?
+  note          String?
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
 
@@ -135,4 +153,36 @@ model TransactionHistory {
   @@index([transactionId])
   @@index([newStatus, changedAt])
   @@map("transaction_histories")
+}
+
+model Customer {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  // optional extended profile
+  name  String?
+  phone String?
+
+  // relations
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+
+  @@map("customers")
+}
+
+model Promo {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  userId          String
+  discountPercent Int       @default(100)
+  isActive        Boolean   @default(true)
+  used            Boolean   @default(false)
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("promos")
 }
