@@ -77,7 +77,7 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
   const code = generateCode();
 
   // 3) Build items payload and upload photos (if any)
-  const rawItems: ProductItem[] = Array.isArray(data.items) ? data.items : [];
+  const rawItems: ProductItem[] = data?.items || [];
   let uploadedItems: ProductItem[] = [];
   if (rawItems.length) {
     const uploadResult = await uploadItemFiles(userId, rawItems, code);
@@ -276,7 +276,9 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     paymentMethod: created.paymentMethod,
     paymentStatus: created.paymentStatus,
     midtransToken: created.midtransToken,
-    midtransRedirectUrl: created.midtransRedirectUrl ? `${created.midtransRedirectUrl}#/gopay-qris` : undefined,
+    midtransRedirectUrl: created.midtransRedirectUrl
+      ? `${created.midtransRedirectUrl}#/gopay-qris`
+      : undefined,
     qrCodeData: created.qrCodeData,
     createdAt: created.createdAt,
   };
