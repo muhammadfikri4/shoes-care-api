@@ -1,30 +1,48 @@
 import dotenv from "dotenv";
 
 dotenv.config();
+const env = process.env;
 
 export const config = {
-  PORT: Number(process.env.PORT ?? 3001),
-  JWT_SECRET: JSON.stringify(process.env.JWT_SECRET ?? ''),
-  JWT_EXPIRES: process.env.JWT_EXPIRES,
-  CODE: process.env.CODE,
-  SUPERADMIN_EMAIL: process.env.SUPERADMIN_EMAIL,
-  SUPERADMIN_PASSWORD: process.env.SUPERADMIN_PASSWORD,
-  SUPERADMIN_NAME: process.env.SUPERADMIN_NAME ?? 'Super Admin',
-  SMTP_USER: process.env.SMTP_USER,
-  ABLY_API_KEY: process.env.ABLY_API_KEY ?? '',
-  SMTP_PASSWORD: process.env.SMTP_PASSWORD,
-  SMTP_HOST: process.env.SMTP_HOST,
-  SMTP_PORT: process.env.SMTP_PORT,
-  SMTP_LOGIN: process.env.SMTP_LOGIN,
-  EMAIL_SENDER: process.env.EMAIL_SENDER,
+  PORT: Number(env.PORT ?? 3001),
+  JWT_SECRET: JSON.stringify(env.JWT_SECRET ?? ''),
+  JWT_EXPIRES: env.JWT_EXPIRES,
+  CODE: env.CODE,
+  SUPERADMIN_EMAIL: env.SUPERADMIN_EMAIL,
+  SUPERADMIN_PASSWORD: env.SUPERADMIN_PASSWORD,
+  SUPERADMIN_NAME: env.SUPERADMIN_NAME ?? 'Super Admin',
+  SMTP_USER: env.SMTP_USER,
+  ABLY_API_KEY: env.ABLY_API_KEY ?? '',
+  SMTP_PASSWORD: env.SMTP_PASSWORD,
+  SMTP_HOST: env.SMTP_HOST,
+  SMTP_PORT: env.SMTP_PORT,
+  SMTP_LOGIN: env.SMTP_LOGIN,
+  EMAIL_SENDER: env.EMAIL_SENDER,
   FIREBASE: {
-    CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL ?? "",
-    PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY ?? "",
-    PROJECT_ID: process.env.FIREBASE_PROJECT_ID ?? "",
+    CLIENT_EMAIL: env.FIREBASE_CLIENT_EMAIL ?? "",
+    PRIVATE_KEY: env.FIREBASE_PRIVATE_KEY ?? "",
+    PROJECT_ID: env.FIREBASE_PROJECT_ID ?? "",
   },
+  MIDTRANS: {
+		URL: process.env.MIDTRANS_SNAP_URL ?? '',
+		SERVER_KEY: process.env.MIDTRANS_SERVER_KEY ?? '',
+		CLIENT_KEY: process.env.MIDTRANS_CLIENT_KEY ?? '',
+    FINISH_URL: process.env.MIDTRANS_FINISH_URL ?? '',
+	},
   REDIS: {
-    PASSWORD: process.env.REDIS_PASSWORD,
-    HOST: process.env.REDIS_HOST,
-    PORT: process.env.REDIS_PORT,
+    PASSWORD: env.REDIS_PASSWORD,
+    HOST: env.REDIS_HOST,
+    PORT: env.REDIS_PORT,
+  },
+  STORAGE: {
+    BUCKET: env.AWS_STORAGE_BUCKET ?? "",
+    ENDPOINT: env.AWS_STORAGE_ENDPOINT ?? "",
+    ENDPOINT_RESPONSE: env.AWS_STORAGE_ENDPOINT
+      ? `${env.AWS_STORAGE_ENDPOINT}/object/public`
+      : "",
+    REGION: env.AWS_STORAGE_REGION ?? "",
+    ACCESS_KEY: env.AWS_STORAGE_ACCESS_KEY ?? "",
+    SECRET_KEY: env.AWS_STORAGE_SECRET_KEY ?? "",
+    BUCKET_FOLDER: env.AWS_STORAGE_BUCKET_FOLDER ?? "",
   },
 };

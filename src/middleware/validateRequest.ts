@@ -1,6 +1,6 @@
 import { NextFunction, type Request, type Response } from 'express';
 import Joi from "joi";
-import { MESSAGE_CODE } from "../utils/ErrorCode";
+import { MESSAGE_CODE } from "../utils/error-code";
 import { HandleResponse } from "../utils/HandleResponse";
 
 export const validateRequest = (body: Joi.ObjectSchema) => {

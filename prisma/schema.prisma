@@ -23,7 +23,7 @@ enum TransactionStatus {
   CREATED
   IN_PROGRESS
   READY_FOR_PICKUP
-  PICKED_UP
+  COMPLETED
   CANCELLED
 }
 
@@ -33,16 +33,23 @@ enum PaymentMethod {
   TRANSFER
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
 model User {
   id       String  @id @default(uuid())
   name     String
   email    String  @unique
   password String?
   role     Role    @default(CUSTOMER)
-  isActive Boolean @default(true)
+  isActive Boolean @default(true) @map("is_active")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // relation
   transactions       Transaction[]
@@ -61,7 +68,6 @@ model Rack {
   status   RackStatus @default(AVAILABLE)
 
   // relation
-  transactions Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -71,41 +77,47 @@ model Rack {
 
 model Transaction {
   id         String            @id @default(uuid())
-  invoice    String            @unique
-  userId     String?
-  customerId String?
-  rackId     String?
+  code       String            @unique
+  userId     String?           @map("user_id")
+  customerId String?           @map("customer_id")
+  rackId     String?           @map("rack_id")
   status     TransactionStatus @default(CREATED)
 
   price        Int // base price
-  finalPrice   Int // setelah diskon/promo
-  promoApplied Boolean @default(false)
+  finalPrice   Int     @map("final_price") // setelah diskon/promo
+  promoApplied Boolean @default(false) @map("promo_applied")
 
   // Payment & customer snapshot
-  paymentMethod PaymentMethod?
+  paymentMethod       PaymentMethod? @map("payment_method")
+  paymentStatus       PaymentStatus  @default(PENDING) @map("payment_status")
+  paidAt              DateTime?      @map("paid_at")
+  cashPaid            Int?           @map("cash_paid")
+  cashChange          Int?           @map("cash_change")
+  midtransToken       String?        @map("midtrans_token")
+  midtransRedirectUrl String?        @map("midtrans_redirect_url")
 
   // QR & Pickup
-  qrCodeData String @unique
+  qrCodeData String @unique @map("qr_code_data")
 
   // Timestamps status penting (opsional tapi berguna untuk audit/riwayat)
-  inProgressAt DateTime?
-  readyAt      DateTime?
-  pickedUpAt   DateTime?
-  cancelledAt  DateTime?
+  inProgressAt DateTime? @map("in_progress_at")
+  readyAt      DateTime? @map("ready_at")
+  pickedUpAt   DateTime? @map("picked_up_at")
+  cancelledAt  DateTime? @map("cancelled_at")
 
   // Snapshot data customer (agar histori tetap, walau user update profil)
-  customerName  String?
-  customerEmail String?
-  customerPhone String?
+  customerName  String? @map("customer_name")
+  customerEmail String? @map("customer_email")
+  customerPhone String? @map("customer_phone")
 
   // Relasi
   customer        User?             @relation(fields: [userId], references: [id])
   customerProfile Customer?         @relation(fields: [customerId], references: [id])
-  rack            Rack?             @relation(fields: [rackId], references: [id])
+  // rack            Rack?             @relation(fields: [rackId], references: [id])
   items           TransactionItem[]
 
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
   TransactionHistory TransactionHistory[]
 
   @@index([status])
@@ -118,46 +130,44 @@ model Transaction {
 // ---- TransactionItem (detail layanan/barang per transaksi) ----
 model TransactionItem {
   id            String  @id @default(uuid())
-  transactionId String
+  transactionId String  @map("transaction_id")
   name          String // contoh: "Cuci Premium", "Repaint", "Deep Clean"
-  qty           Int     @default(1)
-  unitPrice     Int // harga satuan
-  lineTotal     Int // qty * unitPrice (disimpan untuk laporan cepat)
-  estimateDays  Int?
-  photoUrl      String?
+  price         Int // harga satuan
+  estimateDay   Int?    @map("estimateDay")
+  file          String
   note          String?
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([transactionId])
   @@map("transaction_items")
 }
 
 model TransactionHistory {
-  id             String             @id @default(uuid())
-  transactionId  String
-  previousStatus TransactionStatus?
-  newStatus      TransactionStatus
+  id            String             @id @default(uuid())
+  transactionId String             @map("transaction_id")
+  fromStatus    TransactionStatus? @map("previous_status")
+  toStatus      TransactionStatus  @map("new_status")
 
   note        String?
   metadata    Json?
-  actorUserId String?
-  actorRole   Role?
-  changedAt   DateTime @default(now())
+  actorUserId String?  @map("actor_user_id")
+  actorRole   Role?    @map("actor_role")
+  changedAt   DateTime @default(now()) @map("changed_at")
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
   actor       User?       @relation(fields: [actorUserId], references: [id])
 
   @@index([transactionId])
-  @@index([newStatus, changedAt])
+  @@index([fromStatus, changedAt])
   @@map("transaction_histories")
 }
 
 model Customer {
   id     String @id @default(uuid())
-  userId String @unique
+  userId String @unique @map("user_id")
 
   // optional extended profile
   name  String?
@@ -167,7 +177,7 @@ model Customer {
   user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("customers")
 }
@@ -175,12 +185,12 @@ model Customer {
 model Promo {
   id              String    @id @default(uuid())
   code            String    @unique
-  userId          String
-  discountPercent Int       @default(100)
-  isActive        Boolean   @default(true)
+  userId          String    @map("user_id")
+  discountPercent Int       @default(100) @map("discount_percent")
+  isActive        Boolean   @default(true) @map("is_active")
   used            Boolean   @default(false)
-  usedAt          DateTime?
-  createdAt       DateTime  @default(now())
+  usedAt          DateTime? @map("used_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 

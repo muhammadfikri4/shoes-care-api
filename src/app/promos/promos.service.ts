@@ -1,6 +1,6 @@
-import { MESSAGE_CODE } from "../../utils/ErrorCode";
-import { ErrorApp } from "../../utils/HttpError";
-import { userRepository } from "../users/users.repository";
+import { MESSAGE_CODE } from "../../utils/error-code";
+import { ErrorApp } from "../../utils/http-error";
+import * as userRepository from "../users/users.repository";
 import { getPromoByCodeRepo } from "./promos.repository";
 
 export const verifyPromoService = async (email: string, code: string) => {

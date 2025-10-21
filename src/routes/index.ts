@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { MESSAGE_CODE } from "../utils/ErrorCode";
+import { MESSAGE_CODE } from "../utils/error-code";
 import { MESSAGES } from "../utils/Messages";
 // import { WebSocket } from "ws";
 // import { wss } from "..";

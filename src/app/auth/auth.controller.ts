@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { authService } from "../auth/auth.service";
-import { ErrorApp } from "../../utils/HttpError";
+import { ErrorApp } from "../../utils/http-error";
 import { HandleResponse } from "../../utils/HandleResponse";
-import { MESSAGE_CODE } from "../../utils/ErrorCode";
+import { MESSAGE_CODE } from "../../utils/error-code";
 
 export const authController = {
   register: async (req: Request, res: Response, next: NextFunction) => {

@@ -1,4 +1,9 @@
 import { Router } from "express";
+import multer from 'multer';
+import { requireRole } from "../../middleware/requireRole";
+import { validateRequest } from "../../middleware/validateRequest";
+import { VerifyToken } from "../../middleware/verifyToken";
+import { fileFilter } from "../../utils/FileFilter";
 import {
   createTransactionController,
   listAllTransactionsController,
@@ -6,13 +11,10 @@ import {
   lookupTransactionController,
   scanPickupController,
   verifyPromoController,
+  midtransNotifyController,
 } from "./transactions.controller";
-import multer from 'multer';
-import { fileFilter } from "../../utils/FileFilter";
-import { validateRequest } from "../../middleware/validateRequest";
-import { createTransactionSchema, scanSchema } from "./transactions.request";
-import { VerifyToken } from "../../middleware/verifyToken";
-import { requireRole } from "../../middleware/requireRole";
+import { scanSchema } from "./transactions.request";
+import { CatchWrapper } from "../../utils/CatchWrapper";
 
 const router = Router();
 
@@ -20,13 +22,16 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), fileFilter });
 
 router
-  .get("/", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), listAllTransactionsController)
-  .post("/", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), upload.array('photos'), createTransactionController)
-  .post("/scan", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), validateRequest(scanSchema), scanPickupController)
-  .get("/lookup", VerifyToken(), lookupTransactionController)
-  .post("/promo/verify", VerifyToken(), verifyPromoController);
+  .get("/", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), CatchWrapper(listAllTransactionsController))
+  .post("/", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), upload.any(), CatchWrapper(createTransactionController))
+  .post("/scan", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), validateRequest(scanSchema), CatchWrapper(scanPickupController))
+  .get("/lookup", VerifyToken(), CatchWrapper(lookupTransactionController))
+  .post("/promo/verify", VerifyToken(), CatchWrapper(verifyPromoController));
+
+// Midtrans notification (public)
+router.post("/midtrans/notify", CatchWrapper(midtransNotifyController));
 
 // Customer endpoint
-router.get("/my", VerifyToken(), listMyTransactionsController);
+router.get("/my", VerifyToken(), CatchWrapper(listMyTransactionsController));
 
 export default router;

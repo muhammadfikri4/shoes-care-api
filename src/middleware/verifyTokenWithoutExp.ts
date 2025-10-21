@@ -3,7 +3,7 @@ import { TokenDecodeInterface } from "../interface";
 import { decode, verify } from "jsonwebtoken";
 import { RequestWithAccessToken } from "../interface/Request";
 import { config } from "../libs";
-import { MESSAGE_CODE } from "../utils/ErrorCode";
+import { MESSAGE_CODE } from "../utils/error-code";
 import { HandleResponse } from "../utils/HandleResponse";
 import { MESSAGES } from "../utils/Messages";
 

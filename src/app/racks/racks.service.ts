@@ -1,5 +1,5 @@
-import { MESSAGE_CODE } from "../../utils/ErrorCode";
-import { ErrorApp } from "../../utils/HttpError";
+import { MESSAGE_CODE } from "../../utils/error-code";
+import { ErrorApp } from "../../utils/http-error";
 import { createRackRepo, getRackByIdRepo, listRacksRepo, removeRackRepo, updateRackRepo } from "./racks.repository";
 import { CreateRackDTO, UpdateRackDTO } from "./racks.dto";
 

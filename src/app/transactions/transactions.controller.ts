@@ -1,34 +1,64 @@
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { RequestWithAccessToken } from "../../interface/Request";
-import { MESSAGE_CODE } from "../../utils/ErrorCode";
+import { MESSAGE_CODE } from "../../utils/error-code";
 import { HandleResponse } from "../../utils/HandleResponse";
-import { ErrorApp } from "../../utils/HttpError";
-import { createTransaction, listTransactions, listTransactionsByUser, lookupTransaction, scanPickup, verifyPromo } from "./transactions.service";
+import * as transactionService from "./transactions.service";
+import { updatePaymentStatusByInvoiceRepo } from "./transactions.repository";
+import { PaymentStatus } from "@prisma/client";
+import { CreateTransactionDTO } from "./transactions.dto";
+import { ErrorApp } from "../../utils/http-error";
+import { createTransactionSchema } from "./transactions.request";
 
 export const createTransactionController = async (req: RequestWithAccessToken, res: Response, next: NextFunction) => {
-  try {
-    let payload: any = req.body;
-    // Handle multipart: expect 'payload' as JSON string and files as 'photos'
-    if (typeof req.body.payload === 'string') {
-      payload = JSON.parse(req.body.payload);
+
+  const payload: CreateTransactionDTO = req.body;
+  let files: Express.Multer.File[] = [];
+  const rawFiles = req.files;
+
+  if (Array.isArray(rawFiles)) {
+    files = rawFiles;
+  } else if (rawFiles && typeof rawFiles === "object") {
+
+    if (Array.isArray(rawFiles.photos)) {
+      files = rawFiles.photos as Express.Multer.File[];
+    } else {
+      files = Object.values(rawFiles).flat() as Express.Multer.File[];
     }
-    // Attach uploaded files buffer to payload so service can map -> photoUrl
-    const files = (req as any).files as Express.Multer.File[] | undefined;
-    if (files && Array.isArray(files) && payload?.items) {
-      payload.items = payload.items.map((it: any, idx: number) => ({ ...it, _fileIndex: files[idx] ? idx : undefined }));
-      (payload as any)._uploadedFiles = files;
-    }
-    const result = await createTransaction(payload);
-    if (result instanceof Error) return next(result);
-    HandleResponse(res, 201, MESSAGE_CODE.SUCCESS, "Transaksi berhasil dibuat", result);
-  } catch (e) {
-    next(e);
   }
+
+  const combine: CreateTransactionDTO = {
+    ...payload, 
+    items: (payload?.items || [])?.map((it, idx) => ({
+      ...it,
+      file: files[idx]
+    }))
+  }
+console.log({combine})
+  const validate = createTransactionSchema.validate(combine);
+  if (validate.error) {
+    next(new ErrorApp(validate.error.message.replace(/"/g, ""), 400, MESSAGE_CODE.BAD_REQUEST))
+    return
+  }
+console.log({combine})
+  const result = await transactionService.createTransaction(combine);
+
+  if (result instanceof ErrorApp) {
+    next(result)
+    return
+  };
+
+  return HandleResponse(
+    res,
+    201,
+    MESSAGE_CODE.SUCCESS,
+    "Transaksi berhasil dibuat",
+    result
+  );
 };
 
 
 export const listAllTransactionsController = async (req: RequestWithAccessToken, res: Response, next: NextFunction) => {
-  const result = await listTransactions(req.query);
+  const result = await transactionService.listTransactions(req.query);
   if(result instanceof ErrorApp) {
     next(result)
     return
@@ -37,7 +67,7 @@ export const listAllTransactionsController = async (req: RequestWithAccessToken,
 };
 
 export const listMyTransactionsController = async (req: RequestWithAccessToken, res: Response,next: NextFunction) => {
-  const result = await listTransactionsByUser(req.userId ?? '');
+  const result = await transactionService.listTransactionsByUser(req.userId ?? '');
   if(result instanceof ErrorApp) {
     next(result)
     return
@@ -46,19 +76,33 @@ export const listMyTransactionsController = async (req: RequestWithAccessToken, 
 };
 
 export const scanPickupController = async (req: RequestWithAccessToken, res: Response, next: NextFunction,) => {
-  const result = await scanPickup(req.body);
+  const result = await transactionService.scanPickup(req.body);
   if (result instanceof Error) return next(result);
   HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Berhasil melakukan scan transaksi", result);
 };
 
 export const lookupTransactionController = async (req: RequestWithAccessToken, res: Response, next: NextFunction) => {
-  const result = await lookupTransaction(req.query);
+  const result = await transactionService.lookupTransaction(req.query);
   if (result instanceof Error) return next(result);
   HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Berhasil melakukan scan transaksi", result);
 };
 
 export const verifyPromoController = async (req: RequestWithAccessToken, res: Response, next: NextFunction) => {
-  const result = await verifyPromo(req.body);
+  const result = await transactionService.verifyPromo(req.body);
   if (result instanceof Error) return next(result);
   HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Promo verified", result);
+};
+
+export const midtransNotifyController = async (req: Request, res: Response) => {
+  try {
+    const { order_id, transaction_status } = req.body || {};
+    if (!order_id) return res.status(400).json({ message: 'order_id is required' });
+    let status: PaymentStatus = PaymentStatus.PENDING;
+    if (transaction_status === 'capture' || transaction_status === 'settlement') status = PaymentStatus.PAID;
+    else if (transaction_status === 'deny' || transaction_status === 'expire' || transaction_status === 'cancel') status = PaymentStatus.FAILED;
+    await updatePaymentStatusByInvoiceRepo(order_id, status, status === PaymentStatus.PAID ? new Date() : undefined);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false });
+  }
 };

@@ -33,7 +33,7 @@ app.use(
       "Content-Type",
       "Date",
       "X-Api-Version",
-      ''
+      "",
     ],
     credentials: true,
     preflightContinue: false,
@@ -49,19 +49,17 @@ app.use(
 // app.use(compression())
 
 app.use(cookieParser());
-app.use(bodyParser.json())
-app.use(express.json())
+app.use(bodyParser.json());
+app.use(express.json());
 
 app.use(routes);
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-
-
 io.on("connection", initialConnectSocket);
 
-    app.use(HandlingError);
+app.use(HandlingError);
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });

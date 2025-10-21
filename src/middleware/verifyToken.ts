@@ -8,12 +8,12 @@ import {
 } from "jsonwebtoken";
 import { RequestWithAccessToken } from "../interface/Request";
 import { config } from "../libs";
-import { MESSAGE_CODE } from "../utils/ErrorCode";
+import { MESSAGE_CODE } from "../utils/error-code";
 import { HandleResponse } from "../utils/HandleResponse";
 import { MESSAGES } from "../utils/Messages";
 // import { Role } from "@prisma/client";
-import { ErrorApp } from "../utils/HttpError";
-import { userRepository } from "../app/users/users.repository";
+import { ErrorApp } from "../utils/http-error";
+import * as userRepository from "../app/users/users.repository";
 
 export const VerifyToken =
   () =>

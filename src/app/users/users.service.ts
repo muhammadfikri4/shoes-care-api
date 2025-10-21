@@ -1,7 +1,7 @@
-import { MESSAGE_CODE } from "../../utils/ErrorCode";
-import { ErrorApp } from "../../utils/HttpError";
+import { MESSAGE_CODE } from "../../utils/error-code";
+import { ErrorApp } from "../../utils/http-error";
 import { getUserProfile } from "./users.mapper";
-import { userRepository } from "./users.repository";
+import * as userRepository from "./users.repository";
 
 
 export const userService = {

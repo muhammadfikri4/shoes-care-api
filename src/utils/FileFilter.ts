@@ -1,7 +1,7 @@
 import { type Request } from "express";
 import { FileFilterCallback } from "multer";
-import { MESSAGE_CODE } from "./ErrorCode";
-import { ErrorApp } from "./HttpError";
+import { MESSAGE_CODE } from "./error-code";
+import { ErrorApp } from "./http-error";
 
 export const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     if (

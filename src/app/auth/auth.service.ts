@@ -1,10 +1,10 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../../libs";
-import { MESSAGE_CODE } from "../../utils/ErrorCode";
+import { MESSAGE_CODE } from "../../utils/error-code";
 import { generateRandom } from "../../utils/generate-random";
-import { ErrorApp } from "../../utils/HttpError";
-import { userRepository } from "../users/users.repository";
+import { ErrorApp } from "../../utils/http-error";
+import * as userRepository from "../users/users.repository";
 import { CustomerOtpVerifyDTO, LoginDTO, RegisterDTO } from "./auth.dto";
 
 export const authService = {

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { userRepository } from "../app/users/users.repository";
-import { MESSAGE_CODE } from "../utils/ErrorCode";
+import * as userRepository from "../app/users/users.repository";
+import { MESSAGE_CODE } from "../utils/error-code";
 import { HandleResponse } from "../utils/HandleResponse";
 import { RequestWithAccessToken } from "../interface/Request";
 
