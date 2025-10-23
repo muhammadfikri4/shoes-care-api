@@ -12,6 +12,7 @@ import { verifyPromoService } from "../promos/promos.service";
 import {
   CreateTransactionDTO,
   MidtransCreationDTO,
+  PaymentPayload,
   ProductItem,
   ScanQRDTO,
   TransactionListFilterDTO,
@@ -49,11 +50,10 @@ interface EnsureTransactionDTO {
 
 const generateCode = () => `TRX-${+new Date()}`;
 
-export const createTransaction = async (data: CreateTransactionDTO) => {
-  // 1) Ensure customer (create if not exists) but do not error if exists
-  let userId: string | undefined;
+export const ensureCustomer = async (data: CreateTransactionDTO) => {
   let customerId: string | undefined;
   const email = data.customerEmail?.trim();
+  let userId: string | undefined;
   const name = data.customerName?.trim();
   const phone = data.customerPhone?.trim();
   if (email) {
@@ -72,7 +72,13 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
       customerId = created.id;
     }
   }
+  return { userId, customerId, name, email, phone };
+};
 
+export const createTransaction = async (data: CreateTransactionDTO) => {
+  // 1) Ensure customer (create if not exists) but do not error if exists
+
+  const { customerId, email, name, phone, userId } = await ensureCustomer(data);
   // 2) Generate unique code (used as invoice and upload filename prefix)
   const code = generateCode();
 
@@ -148,16 +154,18 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
 
   // 6) Prepare invoice (use code) + QR data
   const invoice = code; // use simple code as invoice
-  const qrData = `sc-pos:tx:${invoice}`;
+  const qrData = `SC-POST:TRX:${invoice}`;
 
   const ensureTransaction: EnsureTransactionDTO = {
     status: PaymentStatus.PENDING,
     token: null,
     redirectUrl: "",
   };
-  let paidAt: Date | undefined;
-  let cashPaid: number | undefined;
-  let cashChange: number | undefined;
+  const payment: PaymentPayload = {
+    cashChange: 0,
+    cashPaid: 0,
+    paidAt: undefined,
+  };
   const midtransPayload: MidtransCreationDTO = {
     customer_details: {
       email,
@@ -183,9 +191,9 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
       ensureTransaction.redirectUrl = snap?.data?.redirect_url;
   } else if (data.paymentMethod === PaymentMethod.CASH) {
     ensureTransaction.status = PaymentStatus.PAID;
-    paidAt = new Date();
-    cashPaid = data.cashPaid ?? 0;
-    cashChange = Math.max(0, (cashPaid || 0) - finalPrice);
+    payment.paidAt = new Date();
+    payment.cashPaid = data.cashPaid ?? 0;
+    payment.cashChange = Math.max(0, (payment.cashPaid || 0) - finalPrice);
   }
   // 8) Persist transaction atomically
   const created = await createTransactionAtomicRepo({
@@ -203,9 +211,9 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     items: uploadedItems,
     promoIdToUse,
     paymentStatus: ensureTransaction.status,
-    paidAt,
-    cashPaid,
-    cashChange,
+    paidAt: payment.paidAt,
+    cashPaid: payment.cashPaid,
+    cashChange: payment.cashChange,
     midtransToken: ensureTransaction.token || undefined,
     midtransRedirectUrl: ensureTransaction.redirectUrl || undefined,
   });

@@ -119,3 +119,9 @@ export interface MidtransResponse {
   token?: string;
   redirect_url: string;
 }
+
+export interface PaymentPayload {
+  paidAt: Date | undefined;
+  cashPaid: number | undefined;
+  cashChange: number | undefined;
+}
