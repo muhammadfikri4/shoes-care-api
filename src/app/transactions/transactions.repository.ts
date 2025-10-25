@@ -175,12 +175,13 @@ export const getTransactionById = async (transactionId: string) =>
 
 export const updatePaymentStatusByInvoiceRepo = async (
   code: string,
-  status: PaymentStatus,
-  paidAt?: Date
+  paymentStatus: PaymentStatus,
+  paidAt?: Date,
+  status?: TransactionStatus
 ) =>
   prisma.transaction.update({
     where: { code },
-    data: { paymentStatus: status, paidAt },
+    data: { paymentStatus, paidAt, status },
   });
 
 const buildTransactionWhere = (

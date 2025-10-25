@@ -4,8 +4,8 @@ import { MESSAGE_CODE } from "../../utils/error-code";
 import { HandleResponse } from "../../utils/HandleResponse";
 import * as transactionService from "./transactions.service";
 import { updatePaymentStatusByInvoiceRepo } from "./transactions.repository";
-import { PaymentStatus } from "@prisma/client";
-import { CreateTransactionDTO } from "./transactions.dto";
+import { PaymentStatus, TransactionStatus } from "@prisma/client";
+import { CreateTransactionDTO, StatusNotify } from "./transactions.dto";
 import { ErrorApp } from "../../utils/http-error";
 import { createTransactionSchema } from "./transactions.request";
 
@@ -141,14 +141,14 @@ export const getDetailTransaction = async (
   res: Response,
   next: NextFunction
 ) => {
-  const transactionId = (req?.params as any)?.transactionId || req?.params?.id;
+  const { transactionId } = req.params;
   const result = await transactionService.getDetailTransaction(transactionId);
   if (result instanceof Error) return next(result);
   HandleResponse(
     res,
     200,
     MESSAGE_CODE.SUCCESS,
-    "Berhasil melakukan scan transaksi",
+    "Berhasil mendapatkan detail transaksi",
     result
   );
 };
@@ -164,26 +164,29 @@ export const verifyPromoController = async (
 };
 
 export const midtransNotifyController = async (req: Request, res: Response) => {
-  try {
-    const { order_id, transaction_status } = req.body || {};
-    if (!order_id)
-      return res.status(400).json({ message: "order_id is required" });
-    let status: PaymentStatus = PaymentStatus.PENDING;
-    if (transaction_status === "capture" || transaction_status === "settlement")
-      status = PaymentStatus.PAID;
-    else if (
-      transaction_status === "deny" ||
-      transaction_status === "expire" ||
-      transaction_status === "cancel"
-    )
-      status = PaymentStatus.FAILED;
-    await updatePaymentStatusByInvoiceRepo(
-      order_id,
-      status,
-      status === PaymentStatus.PAID ? new Date() : undefined
-    );
-    return res.json({ ok: true });
-  } catch (e) {
-    return res.status(500).json({ ok: false });
+  const { order_id, transaction_status } = req.body || {};
+  console.log({ body: req.body });
+  if (!order_id) return;
+  const status: StatusNotify = {
+    payment: PaymentStatus.PENDING,
+    transaction: TransactionStatus.CREATED,
+  };
+  if (transaction_status === "capture" || transaction_status === "settlement") {
+    status.payment = PaymentStatus.PAID;
+    status.transaction = TransactionStatus.IN_PROGRESS;
+  } else if (
+    transaction_status === "deny" ||
+    transaction_status === "expire" ||
+    transaction_status === "cancel"
+  ) {
+    status.payment = PaymentStatus.FAILED;
+    status.transaction = TransactionStatus.CANCELLED;
   }
+  await updatePaymentStatusByInvoiceRepo(
+    order_id,
+    status.payment,
+    status.payment === PaymentStatus.PAID ? new Date() : undefined,
+    status.transaction
+  );
+  return res.json({ ok: true });
 };

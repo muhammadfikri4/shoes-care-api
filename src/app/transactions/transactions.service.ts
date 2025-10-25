@@ -39,6 +39,7 @@ import { createMidtransTransaction } from "../../utils/midtrans";
 import * as customerRepository from "../customers/customers.repository";
 import * as promoRepository from "../promos/promos.repository";
 import * as userRepository from "../users/users.repository";
+import { getDetailTransactionDTOMapper } from "./transaction.mapper";
 import { uploadItemFiles } from "./transactions.utils";
 
 // No direct prisma usage in service; repository handles DB
@@ -155,8 +156,7 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
   }
 
   // 6) Prepare invoice (use code) + QR data
-  const invoice = code; // use simple code as invoice
-  const qrData = `SC-POST:TRX:${invoice}`;
+  const qrData = `SC-POST:TRX:${code}`;
 
   const ensureTransaction: EnsureTransactionDTO = {
     status: PaymentStatus.PENDING,
@@ -180,7 +180,12 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     })),
     transaction_details: {
       gross_amount: finalPrice,
-      order_id: generateCode(),
+      order_id: code,
+    },
+    callbacks: {
+      finish: `${config.MIDTRANS.FINISH_URL}`,
+      error: `${config.MIDTRANS.FINISH_URL}`,
+      pending: `${config.MIDTRANS.FINISH_URL}`,
     },
   };
   console.log({ finalPrice });
@@ -260,12 +265,12 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     if (email) {
       const trackingBase = config.MIDTRANS.FINISH_URL;
       const trackingUrl = trackingBase
-        ? `${trackingBase}?invoice=${encodeURIComponent(invoice)}`
+        ? `${trackingBase}?invoice=${encodeURIComponent(code)}`
         : undefined;
       await SendTransactionNotificationEmail({
         to: email,
         name,
-        invoice,
+        code,
         qrData,
         trackingUrl,
         amount: finalPrice,
@@ -407,37 +412,7 @@ export const getDetailTransaction = async (transactionId: string) => {
       MESSAGE_CODE.NOT_FOUND
     );
   const safeUserId = trx.userId ?? "guest";
-  return {
-    id: trx.id,
-    code: trx.code,
-    status: trx.status,
-    price: trx.price,
-    finalPrice: trx.finalPrice,
-    promoApplied: trx.promoApplied,
-    paymentMethod: trx.paymentMethod,
-    customerName: trx.customerName,
-    customerEmail: trx.customerEmail,
-    createdAt: trx.createdAt,
-    updatedAt: trx.updatedAt,
-    items: (trx.items || [])?.map((it) => ({
-      id: it.id,
-      name: it.name,
-      price: it.price,
-      photoUrl: it.file
-        ? GetPublicURL(`transactions/shoes/${safeUserId}/${it.file}`)
-        : undefined,
-      estimateDay: it.estimateDay,
-      rackCode: it?.rack?.code,
-    })),
-    history:
-      (trx.TransactionHistory || [])?.map((h) => ({
-        id: h.id,
-        fromStatus: h.fromStatus,
-        toStatus: h.toStatus,
-        note: h.note,
-        changedAt: h.changedAt,
-      })) ?? [],
-  };
+  return getDetailTransactionDTOMapper(safeUserId, trx);
 };
 
 export const verifyPromo = async (data: VerifyPromoDTO) =>

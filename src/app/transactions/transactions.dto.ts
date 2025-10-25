@@ -1,4 +1,8 @@
-import { PaymentMethod, TransactionStatus } from "@prisma/client";
+import {
+  PaymentMethod,
+  PaymentStatus,
+  TransactionStatus,
+} from "@prisma/client";
 import { Query } from "../../interface/Query";
 
 // Input shape for items in CreateTransactionDTO (aligned with request schema)
@@ -125,4 +129,9 @@ export interface PaymentPayload {
   paidAt: Date | undefined;
   cashPaid: number | undefined;
   cashChange: number | undefined;
+}
+
+export interface StatusNotify {
+  payment: PaymentStatus;
+  transaction: TransactionStatus;
 }

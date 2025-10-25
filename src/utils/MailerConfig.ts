@@ -68,7 +68,7 @@ export const SendPromoCodeEmail = async (
 export const SendTransactionNotificationEmail = async (payload: {
   to: string;
   name?: string;
-  invoice: string;
+  code: string;
   qrData: string;
   trackingUrl?: string;
   amount?: number;
@@ -78,7 +78,7 @@ export const SendTransactionNotificationEmail = async (payload: {
   const {
     to,
     name,
-    invoice,
+    code,
     qrData,
     trackingUrl,
     amount,
@@ -109,7 +109,7 @@ export const SendTransactionNotificationEmail = async (payload: {
      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#222">
        <h2>Transaksi Berhasil Dibuat</h2>
        <p>Halo ${name || "Customer"},</p>
-       <p>Transaksi Anda dengan invoice <strong>${invoice}</strong> telah dibuat.</p>
+       <p>Transaksi Anda dengan kode transaksi <strong>${code}</strong> telah dibuat.</p>
        ${typeof amount === "number" ? `<p>Total: <strong>Rp ${amount.toLocaleString("id-ID")}</strong></p>` : ""}
        ${paymentMethod ? `<p>Metode Pembayaran: <strong>${paymentMethod}</strong></p>` : ""}
        <p>Gunakan QR berikut untuk pengambilan:</p>
@@ -124,7 +124,7 @@ export const SendTransactionNotificationEmail = async (payload: {
   return transporter.sendMail({
     to,
     from: config.EMAIL_SENDER,
-    subject: `Invoice ${invoice} dibuat`,
+    subject: `Invoice ${code} dibuat`,
     html,
     attachments: qrPng
       ? [
