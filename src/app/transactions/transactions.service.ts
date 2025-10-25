@@ -28,6 +28,8 @@ import {
   listFilteredTransactionsRepo,
   listTransactionsByUserRepo,
   pickupTransactionAtomicRepo,
+  readyToPickupAtomicRepo,
+  completeTransactionAtomicRepo,
 } from "./transactions.repository";
 
 import { config } from "../../libs";
@@ -41,6 +43,7 @@ import * as promoRepository from "../promos/promos.repository";
 import * as userRepository from "../users/users.repository";
 import { getDetailTransactionDTOMapper } from "./transaction.mapper";
 import { uploadItemFiles } from "./transactions.utils";
+import { TransactionIdDTO } from "./transactions.dto";
 
 // No direct prisma usage in service; repository handles DB
 
@@ -417,3 +420,46 @@ export const getDetailTransaction = async (transactionId: string) => {
 
 export const verifyPromo = async (data: VerifyPromoDTO) =>
   verifyPromoService(data.email, data.code);
+
+export const markReadyToPickup = async (data: TransactionIdDTO) => {
+  const trx = await getTransactionById(data.id);
+  if (!trx)
+    return new ErrorApp(
+      "Transaksi tidak ditemukan",
+      404,
+      MESSAGE_CODE.NOT_FOUND
+    );
+  if (trx.status !== TransactionStatus.IN_PROGRESS)
+    return new ErrorApp(
+      "Status tidak valid. Hanya IN_PROGRESS yang bisa diubah ke READY_FOR_PICKUP",
+      400,
+      MESSAGE_CODE.BAD_REQUEST
+    );
+  await readyToPickupAtomicRepo({ id: trx.id, previousStatus: trx.status });
+  return { ok: true };
+};
+
+export const markCompleted = async (data: TransactionIdDTO) => {
+  const trx = await getTransactionById(data.id);
+  if (!trx)
+    return new ErrorApp(
+      "Transaksi tidak ditemukan",
+      404,
+      MESSAGE_CODE.NOT_FOUND
+    );
+  if (trx.status !== TransactionStatus.READY_TO_PICKUP)
+    return new ErrorApp(
+      "Status tidak valid. Hanya Ready To Pickup yang bisa diubah ke Completed",
+      400,
+      MESSAGE_CODE.BAD_REQUEST
+    );
+  const rackIds = (trx.items || [])
+    .map((it) => it.rackId)
+    .filter((v: string | null | undefined) => !!v) as string[];
+  await completeTransactionAtomicRepo({
+    id: trx.id,
+    previousStatus: trx.status,
+    rackIds,
+  });
+  return { ok: true };
+};

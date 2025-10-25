@@ -13,6 +13,8 @@ import {
   verifyPromoController,
   midtransNotifyController,
   getDetailTransaction,
+  readyToPickupController,
+  completeController,
 } from "./transactions.controller";
 import { scanSchema } from "./transactions.request";
 import { CatchWrapper } from "../../utils/CatchWrapper";
@@ -44,6 +46,18 @@ router
     requireRole("ADMIN", "SUPERADMIN"),
     validateRequest(scanSchema),
     CatchWrapper(scanPickupController)
+  )
+  .post(
+    "/ready-to-pickup",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN"),
+    CatchWrapper(readyToPickupController)
+  )
+  .post(
+    "/complete",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN"),
+    CatchWrapper(completeController)
   )
   .post("/promo/verify", VerifyToken(), CatchWrapper(verifyPromoController));
 

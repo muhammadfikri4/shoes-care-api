@@ -13,7 +13,6 @@ const prisma = new PrismaClient();
 
 export const createTransactionRepo = async (data: {
   userId?: string | null;
-  rackId: string;
   price: number;
   finalPrice: number;
   promoApplied: boolean;
@@ -151,6 +150,55 @@ export const pickupTransactionAtomicRepo = async (payload: {
         fromStatus: payload.previousStatus,
         toStatus: TransactionStatus.COMPLETED,
         note: "Shoes picked up via QR scan",
+      },
+    });
+  });
+};
+
+export const readyToPickupAtomicRepo = async (payload: {
+  id: string;
+  previousStatus: TransactionStatus;
+}) => {
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.update({
+      where: { id: payload.id },
+      data: { status: TransactionStatus.READY_TO_PICKUP, readyAt: new Date() },
+    });
+    await tx.transactionHistory.create({
+      data: {
+        transactionId: payload.id,
+        fromStatus: payload.previousStatus,
+        toStatus: TransactionStatus.READY_TO_PICKUP,
+        note: "Transaction ready for pickup",
+      },
+    });
+  });
+};
+
+export const completeTransactionAtomicRepo = async (payload: {
+  id: string;
+  previousStatus: TransactionStatus;
+  rackIds?: string[];
+}) => {
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.update({
+      where: { id: payload.id },
+      data: { status: TransactionStatus.COMPLETED, pickedUpAt: new Date() },
+    });
+    if (payload.rackIds?.length) {
+      for (const rid of payload.rackIds) {
+        await tx.rack.update({
+          where: { id: rid },
+          data: { status: RackStatus.AVAILABLE },
+        });
+      }
+    }
+    await tx.transactionHistory.create({
+      data: {
+        transactionId: payload.id,
+        fromStatus: payload.previousStatus,
+        toStatus: TransactionStatus.COMPLETED,
+        note: "Transaction marked completed",
       },
     });
   });

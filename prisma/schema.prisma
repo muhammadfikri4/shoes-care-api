@@ -22,7 +22,7 @@ enum RackStatus {
 enum TransactionStatus {
   CREATED
   IN_PROGRESS
-  READY_FOR_PICKUP
+  READY_TO_PICKUP
   COMPLETED
   CANCELLED
 }

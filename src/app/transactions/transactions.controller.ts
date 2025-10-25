@@ -8,6 +8,7 @@ import { PaymentStatus, TransactionStatus } from "@prisma/client";
 import { CreateTransactionDTO, StatusNotify } from "./transactions.dto";
 import { ErrorApp } from "../../utils/http-error";
 import { createTransactionSchema } from "./transactions.request";
+import { completeSchema, readyToPickupSchema } from "./transactions.request";
 
 export const createTransactionController = async (
   req: RequestWithAccessToken,
@@ -189,4 +190,44 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
     status.transaction
   );
   return res.json({ ok: true });
+};
+
+export const readyToPickupController = async (
+  req: RequestWithAccessToken,
+  res: Response,
+  next: NextFunction
+) => {
+  const validate = readyToPickupSchema.validate(req.body);
+  if (validate.error) {
+    return next(
+      new ErrorApp(
+        validate.error.message.replace(/"/g, ""),
+        400,
+        MESSAGE_CODE.BAD_REQUEST
+      )
+    );
+  }
+  const result = await transactionService.markReadyToPickup(req.body);
+  if (result instanceof ErrorApp) return next(result);
+  HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Status updated", result);
+};
+
+export const completeController = async (
+  req: RequestWithAccessToken,
+  res: Response,
+  next: NextFunction
+) => {
+  const validate = completeSchema.validate(req.body);
+  if (validate.error) {
+    return next(
+      new ErrorApp(
+        validate.error.message.replace(/"/g, ""),
+        400,
+        MESSAGE_CODE.BAD_REQUEST
+      )
+    );
+  }
+  const result = await transactionService.markCompleted(req.body);
+  if (result instanceof ErrorApp) return next(result);
+  HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Status updated", result);
 };

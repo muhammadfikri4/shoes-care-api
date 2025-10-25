@@ -28,3 +28,11 @@ export const verifyPromoSchema = Joi.object({
   email: Joi.string().email().required(),
   code: Joi.string().required(),
 });
+
+export const readyToPickupSchema = Joi.object({
+  id: Joi.string().uuid().required(),
+});
+
+export const completeSchema = Joi.object({
+  id: Joi.string().uuid().required(),
+});

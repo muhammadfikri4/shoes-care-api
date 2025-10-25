@@ -125,6 +125,11 @@ export interface MidtransResponse {
   redirect_url: string;
 }
 
+// Generic DTO for status update endpoints
+export interface TransactionIdDTO {
+  id: string;
+}
+
 export interface PaymentPayload {
   paidAt: Date | undefined;
   cashPaid: number | undefined;
