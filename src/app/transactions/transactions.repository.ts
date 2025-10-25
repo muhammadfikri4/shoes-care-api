@@ -127,7 +127,7 @@ export const createTransactionAtomicRepo = async (payload: {
 };
 
 export const getTransactionByInvoiceRepo = async (code: string) =>
-  prisma.transaction.findUnique({ where: { code } });
+  prisma.transaction.findUnique({ where: { code }, include: { items: true } });
 
 export const pickupTransactionAtomicRepo = async (payload: {
   id: string;
@@ -160,7 +160,15 @@ export const findTransactionDetailByInvoiceRepo = async (code: string) =>
   prisma.transaction.findUnique({
     where: { code },
     include: {
-      items: true,
+      items: { include: { rack: true } },
+      TransactionHistory: { orderBy: { changedAt: "asc" } },
+    },
+  });
+export const getTransactionById = async (transactionId: string) =>
+  prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: {
+      items: { include: { rack: true } },
       TransactionHistory: { orderBy: { changedAt: "asc" } },
     },
   });

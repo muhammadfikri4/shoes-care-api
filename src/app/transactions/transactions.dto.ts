@@ -9,6 +9,7 @@ export interface ProductItem {
   file: Express.Multer.File | string;
   note?: string;
   // Backward compatibility (if some callers send these):
+  rackId: string;
 }
 
 export interface CreateTransactionDTO {

@@ -69,8 +69,9 @@ model Rack {
 
   // relation
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  TransactionItem TransactionItem[]
 
   @@map("racks")
 }
@@ -80,7 +81,6 @@ model Transaction {
   code       String            @unique
   userId     String?           @map("user_id")
   customerId String?           @map("customer_id")
-  rackId     String?           @map("rack_id")
   status     TransactionStatus @default(CREATED)
 
   price        Int // base price
@@ -110,10 +110,9 @@ model Transaction {
   customerEmail String? @map("customer_email")
   customerPhone String? @map("customer_phone")
 
-  // Relasi
+  // Relation
   customer        User?             @relation(fields: [userId], references: [id])
   customerProfile Customer?         @relation(fields: [customerId], references: [id])
-  // rack            Rack?             @relation(fields: [rackId], references: [id])
   items           TransactionItem[]
 
   createdAt          DateTime             @default(now()) @map("created_at")
@@ -121,27 +120,28 @@ model Transaction {
   TransactionHistory TransactionHistory[]
 
   @@index([status])
-  @@index([rackId])
   @@index([userId])
   @@index([customerId])
   @@map("transactions")
 }
 
-// ---- TransactionItem (detail layanan/barang per transaksi) ----
 model TransactionItem {
   id            String  @id @default(uuid())
   transactionId String  @map("transaction_id")
-  name          String // contoh: "Cuci Premium", "Repaint", "Deep Clean"
+  name          String
   price         Int // harga satuan
   estimateDay   Int?    @map("estimateDay")
   file          String
   note          String?
+  rackId        String @map("rack_id")
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
+  rack        Rack       @relation(fields: [rackId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([transactionId])
+  @@index([rackId])
   @@map("transaction_items")
 }
 

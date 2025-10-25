@@ -23,6 +23,7 @@ import {
   countFilteredTransactionsRepo,
   createTransactionAtomicRepo,
   findTransactionDetailByInvoiceRepo,
+  getTransactionById,
   getTransactionByInvoiceRepo,
   listFilteredTransactionsRepo,
   listTransactionsByUserRepo,
@@ -96,6 +97,7 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
         estimateDay: Number(it.estimateDay || 0),
         file: it.file,
         note: it.note || undefined,
+        rackId: it.rackId,
       };
     });
   }
@@ -331,7 +333,7 @@ export const scanPickup = async (data: ScanQRDTO) => {
   }
   await pickupTransactionAtomicRepo({
     id: trx.id,
-    rackId: trx.rackId,
+    rackId: (trx.items || [])[0]?.rackId,
     previousStatus: trx.status,
   });
   return { ok: true };
@@ -339,25 +341,26 @@ export const scanPickup = async (data: ScanQRDTO) => {
 
 export const lookupTransaction = async (params: {
   qr?: string;
-  invoice?: string;
+  code?: string;
 }) => {
-  let invoice: string | undefined = params.invoice;
-  if (params.qr && !invoice) {
+  let code: string | undefined = params.code;
+  console.log({ params });
+  if (params.qr && !code) {
     const parts = params.qr.split(":");
     if (parts.length === 3 && parts[0] === "sc-pos" && parts[1] === "tx") {
-      invoice = parts[2];
+      code = parts[2];
     } else {
       return new ErrorApp("QR tidak valid", 400, MESSAGE_CODE.BAD_REQUEST);
     }
   }
-  if (!invoice) {
+  if (!code) {
     return new ErrorApp(
       "Parameter invoice atau qr diperlukan",
       400,
       MESSAGE_CODE.BAD_REQUEST
     );
   }
-  const trx = await findTransactionDetailByInvoiceRepo(invoice);
+  const trx = await findTransactionDetailByInvoiceRepo(code);
   if (!trx)
     return new ErrorApp(
       "Transaksi tidak ditemukan",
@@ -387,6 +390,47 @@ export const lookupTransaction = async (params: {
       })) ?? [],
     history:
       trx.TransactionHistory?.map((h) => ({
+        id: h.id,
+        fromStatus: h.fromStatus,
+        toStatus: h.toStatus,
+        note: h.note,
+        changedAt: h.changedAt,
+      })) ?? [],
+  };
+};
+export const getDetailTransaction = async (transactionId: string) => {
+  const trx = await getTransactionById(transactionId);
+  if (!trx)
+    return new ErrorApp(
+      "Transaksi tidak ditemukan",
+      404,
+      MESSAGE_CODE.NOT_FOUND
+    );
+  const safeUserId = trx.userId ?? "guest";
+  return {
+    id: trx.id,
+    code: trx.code,
+    status: trx.status,
+    price: trx.price,
+    finalPrice: trx.finalPrice,
+    promoApplied: trx.promoApplied,
+    paymentMethod: trx.paymentMethod,
+    customerName: trx.customerName,
+    customerEmail: trx.customerEmail,
+    createdAt: trx.createdAt,
+    updatedAt: trx.updatedAt,
+    items: (trx.items || [])?.map((it) => ({
+      id: it.id,
+      name: it.name,
+      price: it.price,
+      photoUrl: it.file
+        ? GetPublicURL(`transactions/shoes/${safeUserId}/${it.file}`)
+        : undefined,
+      estimateDay: it.estimateDay,
+      rackCode: it?.rack?.code,
+    })),
+    history:
+      (trx.TransactionHistory || [])?.map((h) => ({
         id: h.id,
         fromStatus: h.fromStatus,
         toStatus: h.toStatus,

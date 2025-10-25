@@ -1,5 +1,5 @@
 import { Router } from "express";
-import multer from 'multer';
+import multer from "multer";
 import { requireRole } from "../../middleware/requireRole";
 import { validateRequest } from "../../middleware/validateRequest";
 import { VerifyToken } from "../../middleware/verifyToken";
@@ -12,6 +12,7 @@ import {
   scanPickupController,
   verifyPromoController,
   midtransNotifyController,
+  getDetailTransaction,
 } from "./transactions.controller";
 import { scanSchema } from "./transactions.request";
 import { CatchWrapper } from "../../utils/CatchWrapper";
@@ -22,10 +23,28 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), fileFilter });
 
 router
-  .get("/", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), CatchWrapper(listAllTransactionsController))
-  .post("/", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), upload.any(), CatchWrapper(createTransactionController))
-  .post("/scan", VerifyToken(), requireRole('ADMIN','SUPERADMIN'), validateRequest(scanSchema), CatchWrapper(scanPickupController))
+  .get(
+    "/",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN"),
+    CatchWrapper(listAllTransactionsController)
+  )
   .get("/lookup", VerifyToken(), CatchWrapper(lookupTransactionController))
+  .get("/:transactionId", VerifyToken(), CatchWrapper(getDetailTransaction))
+  .post(
+    "/",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN"),
+    upload.any(),
+    CatchWrapper(createTransactionController)
+  )
+  .post(
+    "/scan",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN"),
+    validateRequest(scanSchema),
+    CatchWrapper(scanPickupController)
+  )
   .post("/promo/verify", VerifyToken(), CatchWrapper(verifyPromoController));
 
 // Midtrans notification (public)
