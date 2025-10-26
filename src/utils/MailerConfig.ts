@@ -3,11 +3,36 @@ import { config } from "../libs";
 import { MailOptions } from "nodemailer/lib/smtp-pool";
 import QRCode from "qrcode";
 
-export const message = (name: string, otp: number) => {
+export const message = (name: string, otp: string | number) => {
+  const otpStr = String(otp);
   return `
-        <p>Hi ${name},</p>
-        <br/>
-        <p>Please use the following One Time Password (OTP) to access the form: <span style="color: #059df0">${otp}</span>. Don't share this OTP with anyone.</p>`;
+  
+<div style="background:#f8fafc; padding:24px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#0f172a;">
+    <div style="max-width:560px; margin:0 auto; background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+      <div style="padding:16px 20px; background:#0b6bcb; color:#ffffff;">
+        <h1 style="margin:0; font-size:16px; font-weight:700;">Verification Code</h1>
+      </div>
+
+      <div style="padding:20px;">
+        <p style="margin:0 0 8px 0;">Hi ${name},</p>
+        <p style="margin:0 0 16px 0; color:#475569;">
+          Masukkan kode OTP di bawah ini untuk mengakses formulir.
+          <strong>Jangan bagikan</strong> kode ini kepada siapa pun.
+        </p>
+
+        <div style="margin:16px 0 8px 0;">
+          ${otpStr}
+        </div>
+        <p style="margin:8px 0 0 0; font-size:12px; color:#64748b;">
+          Kode berlaku terbatas. Jika Anda tidak meminta OTP ini, abaikan email ini.
+        </p>
+
+    </div>
+
+    <div style="max-width:560px; margin:10px auto 0; text-align:center; color:#94a3b8; font-size:12px; padding-bottom:16px;">
+      Butuh bantuan? Hubungi support.
+    </div>
+  </div>`;
 };
 
 export const transporter = nodemailer.createTransport({
@@ -32,8 +57,7 @@ export const SendEmail = async (to: string, name: string, otp: number) => {
   return await transporter.sendMail({
     to,
     from: config.EMAIL_SENDER,
-    subject: "HIMTI UMT Code Verification",
-    text: `Your OTP Code Verification is ${otp}`,
+    subject: "OTP Verification",
     html: message(name, otp),
   });
 };
