@@ -3,12 +3,14 @@ import { RequestWithAccessToken } from "../../interface/Request";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { HandleResponse } from "../../utils/HandleResponse";
 import * as transactionService from "./transactions.service";
-import { updatePaymentStatusByInvoiceRepo } from "./transactions.repository";
+import { getTransactionByInvoiceRepo, updatePaymentStatusByInvoiceRepo } from "./transactions.repository";
 import { PaymentStatus, TransactionStatus } from "@prisma/client";
 import { CreateTransactionDTO, StatusNotify } from "./transactions.dto";
 import { ErrorApp } from "../../utils/http-error";
 import { createTransactionSchema } from "./transactions.request";
 import { completeSchema, readyToPickupSchema } from "./transactions.request";
+import { SendPaymentSuccessEmail } from "../../utils/MailerConfig";
+import { config } from "../../libs";
 
 export const createTransactionController = async (
   req: RequestWithAccessToken,
@@ -91,7 +93,8 @@ export const listMyTransactionsController = async (
   next: NextFunction
 ) => {
   const result = await transactionService.listTransactionsByUser(
-    req.userId ?? ""
+    req.userId ?? "",
+    req.query
   );
   if (result instanceof ErrorApp) {
     next(result);
@@ -102,7 +105,8 @@ export const listMyTransactionsController = async (
     200,
     MESSAGE_CODE.SUCCESS,
     "Berhasil mendapatkan history transaksi",
-    result
+    result?.data,
+    result?.meta
   );
 };
 
@@ -165,31 +169,54 @@ export const verifyPromoController = async (
 };
 
 export const midtransNotifyController = async (req: Request, res: Response) => {
-  const { order_id, transaction_status } = req.body || {};
-  console.log({ body: req.body });
-  if (!order_id) return;
-  const status: StatusNotify = {
-    payment: PaymentStatus.PENDING,
-    transaction: TransactionStatus.CREATED,
-  };
-  if (transaction_status === "capture" || transaction_status === "settlement") {
-    status.payment = PaymentStatus.PAID;
-    status.transaction = TransactionStatus.IN_PROGRESS;
-  } else if (
-    transaction_status === "deny" ||
-    transaction_status === "expire" ||
-    transaction_status === "cancel"
-  ) {
-    status.payment = PaymentStatus.FAILED;
-    status.transaction = TransactionStatus.CANCELLED;
+  try {
+    const { order_id, transaction_status } = req.body || {};
+    if (!order_id)
+      return res.status(400).json({ message: "order_id is required" });
+
+    const status: StatusNotify = {
+      payment: PaymentStatus.PENDING,
+      transaction: TransactionStatus.CREATED,
+    };
+    if (transaction_status === "capture" || transaction_status === "settlement") {
+      status.payment = PaymentStatus.PAID;
+      status.transaction = TransactionStatus.IN_PROGRESS;
+    } else if (
+      transaction_status === "deny" ||
+      transaction_status === "expire" ||
+      transaction_status === "cancel"
+    ) {
+      status.payment = PaymentStatus.FAILED;
+      status.transaction = TransactionStatus.CANCELLED;
+    }
+    await updatePaymentStatusByInvoiceRepo(
+      order_id,
+      status.payment,
+      status.payment === PaymentStatus.PAID ? new Date() : undefined,
+      status.transaction
+    );
+
+    if (status.payment === PaymentStatus.PAID) {
+      const trx = await getTransactionByInvoiceRepo(order_id);
+      if (trx?.customerEmail) {
+        const trackingBase = config.CLIENT_URL;
+        const trackingUrl = trackingBase
+          ? `${trackingBase}?invoice=${encodeURIComponent(trx.code)}`
+          : undefined;
+        await SendPaymentSuccessEmail({
+          to: trx.customerEmail,
+          name: trx.customerName || undefined,
+          code: trx.code,
+          qrData: trx.qrCodeData,
+          trackingUrl,
+          amount: trx.finalPrice ?? trx.price,
+        });
+      }
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false });
   }
-  await updatePaymentStatusByInvoiceRepo(
-    order_id,
-    status.payment,
-    status.payment === PaymentStatus.PAID ? new Date() : undefined,
-    status.transaction
-  );
-  return res.json({ ok: true });
 };
 
 export const readyToPickupController = async (

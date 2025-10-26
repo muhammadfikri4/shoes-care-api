@@ -19,3 +19,14 @@ export const getCustomerByEmail = async (email: string) =>
       },
     },
   });
+
+export const updateCustomerByUserIdRepo = async (
+  userId: string,
+  data: Partial<{
+    activatedAt: Date | null;
+    activationCode: string | null;
+    activationExpiresAt: Date | null;
+    name?: string | null;
+    phone?: string | null;
+  }>
+) => prisma.customer.update({ where: { userId }, data });

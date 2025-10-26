@@ -22,4 +22,14 @@ export const otpVerifySchema = Joi.object({
   email: Joi.string().email().required(),
   otp: Joi.string().length(6).required(),
 });
+
+export const customerRegisterSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(6).max(100).required(),
+});
+
+export const customerRegisterVerifySchema = Joi.object({
+  key: Joi.string().uuid().required(),
+  otp: Joi.string().length(6).required(),
+});
   

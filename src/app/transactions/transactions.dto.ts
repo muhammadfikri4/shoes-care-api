@@ -42,6 +42,8 @@ export interface TransactionListFilterDTO extends Query {
   status?: TransactionStatus;
   startDate?: string;
   endDate?: string;
+  customerId?: string
+  userId?: string;
 }
 
 export interface MidtransVANumber {

@@ -1,10 +1,11 @@
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { ErrorApp } from "../../utils/http-error";
 import * as userRepository from "../users/users.repository";
+import { Role } from "@prisma/client";
 import { getPromoByCodeRepo } from "./promos.repository";
 
 export const verifyPromoService = async (email: string, code: string) => {
-  const user = await userRepository.getUserByEmail(email);
+  const user = await userRepository.getUserByEmailAndRole(email, Role.CUSTOMER);
   if (!user) return new ErrorApp("User not found", 404, MESSAGE_CODE.NOT_FOUND);
   const promo = await getPromoByCodeRepo(code);
   if (!promo || promo.userId !== user.id) {
@@ -15,4 +16,3 @@ export const verifyPromoService = async (email: string, code: string) => {
   }
   return { valid: true, discountPercent: promo.discountPercent };
 };
-

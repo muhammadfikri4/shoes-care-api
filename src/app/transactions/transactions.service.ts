@@ -19,6 +19,7 @@ import {
   VerifyPromoDTO,
 } from "./transactions.dto";
 import {
+  completeTransactionAtomicRepo,
   countCompletedTransactionsByUserSinceRepo,
   countFilteredTransactionsRepo,
   createTransactionAtomicRepo,
@@ -26,15 +27,14 @@ import {
   getTransactionById,
   getTransactionByInvoiceRepo,
   listFilteredTransactionsRepo,
-  listTransactionsByUserRepo,
   pickupTransactionAtomicRepo,
   readyToPickupAtomicRepo,
-  completeTransactionAtomicRepo,
 } from "./transactions.repository";
 
 import { config } from "../../libs";
 import {
   SendPromoCodeEmail,
+  SendReadyToPickupEmail,
   SendTransactionNotificationEmail,
 } from "../../utils/MailerConfig";
 import { createMidtransTransaction } from "../../utils/midtrans";
@@ -42,8 +42,8 @@ import * as customerRepository from "../customers/customers.repository";
 import * as promoRepository from "../promos/promos.repository";
 import * as userRepository from "../users/users.repository";
 import { getDetailTransactionDTOMapper } from "./transaction.mapper";
-import { uploadItemFiles } from "./transactions.utils";
 import { TransactionIdDTO } from "./transactions.dto";
+import { uploadItemFiles } from "./transactions.utils";
 
 // No direct prisma usage in service; repository handles DB
 
@@ -142,14 +142,14 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
 
   // 5) Validate payment if CASH
   if (data.paymentMethod === PaymentMethod.CASH) {
-    if (typeof data.cashPaid !== "number") {
+    if (isNaN(Number(data.cashPaid))) {
       return new ErrorApp(
         "Jumlah uang tunai belum diisi",
         400,
         MESSAGE_CODE.BAD_REQUEST
       );
     }
-    if (data.cashPaid < finalPrice) {
+    if (Number(data.cashPaid) < finalPrice) {
       return new ErrorApp(
         "Uang tunai tidak cukup",
         400,
@@ -158,8 +158,8 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     }
   }
 
-  // 6) Prepare invoice (use code) + QR data
-  const qrData = `SC-POST:TRX:${code}`;
+  // 6) Prepare invoice (use code) + QR data (must match scanner parser: sc-pos:tx:{code})
+  const qrData = `sc-pos:tx:${code}`;
 
   const ensureTransaction: EnsureTransactionDTO = {
     status: PaymentStatus.PENDING,
@@ -186,9 +186,9 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
       order_id: code,
     },
     callbacks: {
-      finish: `${config.MIDTRANS.FINISH_URL}`,
-      error: `${config.MIDTRANS.FINISH_URL}`,
-      pending: `${config.MIDTRANS.FINISH_URL}`,
+      finish: `${config.CLIENT_URL}`,
+      error: `${config.CLIENT_URL}`,
+      pending: `${config.CLIENT_URL}`,
     },
   };
   console.log({ finalPrice });
@@ -266,9 +266,9 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
   // 10) Send transaction notification email with QR code and tracking button
   try {
     if (email) {
-      const trackingBase = config.MIDTRANS.FINISH_URL;
+      const trackingBase = config.CLIENT_URL;
       const trackingUrl = trackingBase
-        ? `${trackingBase}?invoice=${encodeURIComponent(code)}`
+        ? `${trackingBase}/my/transactions/${created.id}`
         : undefined;
       await SendTransactionNotificationEmail({
         to: email,
@@ -315,8 +315,26 @@ export const listTransactions = async (
   return { data: rows, meta };
 };
 
-export const listTransactionsByUser = async (userId: string) =>
-  listTransactionsByUserRepo(userId);
+export const listTransactionsByUser = async (
+  userId: string,
+  query: TransactionListFilterDTO = {}
+) => {
+  const customer = await customerRepository.getCustomerByUserIdRepo(userId);
+  if (!customer) {
+    return {
+      data: [],
+      meta: Meta(0, 0, 0),
+    };
+  }
+  const q: TransactionListFilterDTO = { ...query, customerId: customer.id };
+  const { page = "1", perPage = "10" } = q;
+  const [rows, total] = await Promise.all([
+    listFilteredTransactionsRepo(q),
+    countFilteredTransactionsRepo(q),
+  ]);
+  const meta = Meta(Number(page), Number(perPage), total);
+  return { data: rows, meta };
+};
 
 export const scanPickup = async (data: ScanQRDTO) => {
   // qr expected format sc-pos:tx:{invoice}
@@ -436,6 +454,23 @@ export const markReadyToPickup = async (data: TransactionIdDTO) => {
       MESSAGE_CODE.BAD_REQUEST
     );
   await readyToPickupAtomicRepo({ id: trx.id, previousStatus: trx.status });
+  try {
+    if (trx.customerEmail) {
+      const trackingBase = config.CLIENT_URL;
+      const trackingUrl = trackingBase
+        ? `${trackingBase}?invoice=${encodeURIComponent(trx.code)}`
+        : undefined;
+      await SendReadyToPickupEmail({
+        to: trx.customerEmail,
+        name: trx.customerName || undefined,
+        code: trx.code,
+        qrData: trx.qrCodeData,
+        trackingUrl,
+      });
+    }
+  } catch (e) {
+    console.warn("Failed to send ready-to-pickup email:", e);
+  }
   return { ok: true };
 };
 
@@ -449,7 +484,7 @@ export const markCompleted = async (data: TransactionIdDTO) => {
     );
   if (trx.status !== TransactionStatus.READY_TO_PICKUP)
     return new ErrorApp(
-      "Status tidak valid. Hanya Ready To Pickup yang bisa diubah ke Completed",
+      "Status tidak valid. Hanya READY_FOR_PICKUP yang bisa diubah ke COMPLETED",
       400,
       MESSAGE_CODE.BAD_REQUEST
     );

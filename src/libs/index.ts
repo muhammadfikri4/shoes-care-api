@@ -28,7 +28,6 @@ export const config = {
     URL: process.env.MIDTRANS_SNAP_URL ?? "",
     SERVER_KEY: process.env.MIDTRANS_SERVER_KEY ?? "",
     CLIENT_KEY: process.env.MIDTRANS_CLIENT_KEY ?? "",
-    FINISH_URL: process.env.MIDTRANS_FINISH_URL ?? "",
   },
   REDIS: {
     PASSWORD: env.REDIS_PASSWORD,

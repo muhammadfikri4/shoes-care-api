@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { validateRequest } from "../../middleware/validateRequest";
 import { authController } from "./auth.controller";
-import { loginSchema, otpVerifySchema, registerSchema } from "./auth.request";
+import { customerRegisterSchema, customerRegisterVerifySchema, loginSchema, registerSchema } from "./auth.request";
 
 const router = Router();
 
 router
 .post("/register", validateRequest(registerSchema), authController.register)
 .post("/login", validateRequest(loginSchema), authController.login)
-.post("/customer-otp/verify", validateRequest(otpVerifySchema), authController.verifyCustomerOtp);
+.post("/customer/register", validateRequest(customerRegisterSchema), authController.customerRegisterStart)
+.post("/customer/register/verify", validateRequest(customerRegisterVerifySchema), authController.customerRegisterVerify);
 
 export default router;

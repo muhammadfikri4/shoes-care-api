@@ -81,9 +81,12 @@ export const createTransactionAtomicRepo = async (payload: {
         code: payload.code,
         userId: payload.userId ?? undefined,
         customerId: payload.customerId,
-        status: TransactionStatus.CREATED,
-        price: payload.basePrice,
-        finalPrice: payload.finalPrice,
+        status:
+          payload.paymentMethod === PaymentMethod.CASH
+            ? TransactionStatus.IN_PROGRESS
+            :  TransactionStatus.CREATED,
+        price: Number(payload.basePrice),
+        finalPrice: Number(payload.finalPrice),
         promoApplied: payload.promoApplied,
         qrCodeData: payload.qrCodeData,
         customerName: payload.customerName,
@@ -92,14 +95,15 @@ export const createTransactionAtomicRepo = async (payload: {
         paymentMethod: payload.paymentMethod,
         paymentStatus: payload.paymentStatus ?? PaymentStatus.PENDING,
         paidAt: payload.paidAt,
-        cashPaid: payload.cashPaid,
-        cashChange: payload.cashChange,
+        cashPaid: Number(payload.cashPaid),
+        cashChange: Number(payload.cashChange),
         midtransToken: payload.midtransToken,
         midtransRedirectUrl: payload.midtransRedirectUrl,
         items: payload.items.length
           ? {
               create: payload.items.map((item) => ({
                 ...item,
+                price: Number(item.price),
                 file: item.file as string,
               })),
             }
@@ -235,10 +239,20 @@ export const updatePaymentStatusByInvoiceRepo = async (
 const buildTransactionWhere = (
   filters: TransactionListFilterDTO
 ): Prisma.TransactionWhereInput => {
-  const { endDate, maxPrice, minPrice, startDate, status, search } =
-    filters || {};
+  const {
+    endDate,
+    maxPrice,
+    minPrice,
+    startDate,
+    status,
+    search,
+    userId,
+    customerId,
+  } = filters || {};
   const where: Prisma.TransactionWhereInput = {};
+  if (userId) where.userId = userId;
   if (status) where.status = status;
+  if (customerId) where.customerId = customerId;
   if (startDate || endDate) {
     where.createdAt = {};
     if (startDate)
@@ -257,6 +271,7 @@ const buildTransactionWhere = (
   if (search && search.trim()) {
     where.code = { contains: search.trim(), mode: "insensitive" };
   }
+  console.log({ where });
   return where;
 };
 
@@ -288,3 +303,6 @@ export const countCompletedTransactionsByUserSinceRepo = async (
   }
   return prisma.transaction.count({ where });
 };
+
+export const countTransactionsByCustomerEmailRepo = async (email: string) =>
+  prisma.transaction.count({ where: { customerEmail: email } });

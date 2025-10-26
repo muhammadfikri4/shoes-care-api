@@ -31,6 +31,8 @@ router
     requireRole("ADMIN", "SUPERADMIN"),
     CatchWrapper(listAllTransactionsController)
   )
+  // Customer endpoint
+  .get("/my", VerifyToken(), CatchWrapper(listMyTransactionsController))
   .get("/lookup", VerifyToken(), CatchWrapper(lookupTransactionController))
   .get("/:transactionId", VerifyToken(), CatchWrapper(getDetailTransaction))
   .post(
@@ -63,8 +65,5 @@ router
 
 // Midtrans notification (public)
 router.post("/midtrans/notify", CatchWrapper(midtransNotifyController));
-
-// Customer endpoint
-router.get("/my", VerifyToken(), CatchWrapper(listMyTransactionsController));
 
 export default router;
