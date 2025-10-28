@@ -296,7 +296,7 @@ export const countCompletedTransactionsByUserSinceRepo = async (
 ) => {
   const where: Prisma.TransactionWhereInput = {
     userId,
-    status: TransactionStatus.COMPLETED,
+    status: TransactionStatus.IN_PROGRESS,
   };
   if (since) {
     where.createdAt = { gte: since } as Prisma.DateTimeFilter;

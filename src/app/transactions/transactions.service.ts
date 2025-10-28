@@ -81,13 +81,9 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
 };
 
 export const createTransaction = async (data: CreateTransactionDTO) => {
-  // 1) Ensure customer (create if not exists) but do not error if exists
-
   const { customerId, email, name, phone, userId } = await ensureCustomer(data);
-  // 2) Generate unique code (used as invoice and upload filename prefix)
   const code = generateCode();
 
-  // 3) Build items payload and upload photos (if any)
   const rawItems: ProductItem[] = data?.items || [];
   let uploadedItems: ProductItem[] = [];
   if (rawItems.length) {
@@ -235,7 +231,8 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
       userId,
       lastUsed?.usedAt ?? undefined
     );
-    if (completedCount >= 10) {
+    console.log({ completedCount });
+    if (completedCount >= 1) {
       const genCode = () =>
         `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
       let c = genCode();

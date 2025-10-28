@@ -42,98 +42,122 @@ export const buildPromoHtml = (opts: {
 };
 
 export const buildInvoiceHtml = (opts: {
-  title: string;
-  subtitle?: string;
-  code: string;
-  name?: string;
-  email?: string;
-  amount?: number;
-  paymentMethod?: string;
-  trackingUrl?: string;
-  actionUrl?: string;
-  actionLabel?: string;
-  qrCid?: string;
-}) => {
-  const {
-    title,
-    subtitle,
-    code,
-    name,
-    email,
-    amount,
-    paymentMethod,
-    trackingUrl,
-    actionUrl,
-    actionLabel,
-    qrCid,
-  } = opts;
-  const money =
-    typeof amount === "number"
-      ? new Intl.NumberFormat("id-ID").format(amount)
-      : undefined;
-
-  return `<!DOCTYPE html>
-  <html lang="id">
-  <head>
-    <meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>
-    <style>
-      img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic}
-      table{border-collapse:collapse!important}body{margin:0!important;padding:0!important;background:#f6f7fb}
-      a{text-decoration:none}a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important}
-      .container{width:600px;max-width:600px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
-      .header{background:#111827;color:#fff;padding:16px 20px}.px{padding-left:20px;padding-right:20px}.ptb{padding-top:20px;padding-bottom:20px}
-      .muted{color:#6b7280}.btn{background:#0ea5e9;color:#fff;padding:12px 16px;border-radius:8px;display:inline-block;font-size:14px}
-      .btn-green{background:#10b981}.col{vertical-align:top}.qrimg{width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;display:block}
-      @media (prefers-color-scheme: dark){.bg-body{background:#0b1220!important}.card{background:#0f172a!important;border-color:#1f2937!important;color:#e5e7eb!important}.header{background:#111827!important;color:#fff!important}.muted{color:#9ca3af!important}.btn{color:#fff!important}}
-      @media screen and (max-width:600px){
-    .container{width:100%!important}
-    .px{padding-left:16px!important;padding-right:16px!important}
-    .ptb{padding-top:16px!important;padding-bottom:16px!important}
-    .col,.stack{display:block!important;width:100%!important;max-width:100%!important}
-    .qrimg{width:160px!important;height:160px!important;margin:0!important}
-    .btn,.btn-green{display:block!important;width:100%!important;text-align:center!important}
-    .qr-cell{text-align:left!important}
-  }
-  </head>
-  <body class="bg-body" style="background:#f6f7fb;margin:0;padding:24px 0;color:#111">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-      <table role="presentation" class="container card" cellpadding="0" cellspacing="0">
-        <tr><td class="header">
-          <div style="font-size:18px;font-weight:700">${title}</div>
-          ${subtitle ? `<div class="muted" style="font-size:12px;opacity:.9;margin-top:2px">${subtitle}</div>` : ""}
-        </td></tr>
-        <tr><td class="px ptb">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td class="col stack" style="width:50%;min-width:260px;padding-right:16px">
-              <div class="muted" style="font-size:12px">Kode Transaksi</div>
-              <div style="font-size:16px;font-weight:600;margin-bottom:8px">${code}</div>
-              <div class="muted" style="font-size:12px">Customer</div>
-              <div style="font-size:14px">${name || "-"}${email ? ` (<span>${email}</span>)` : ""}</div>
-              ${paymentMethod ? `<div style="margin-top:10px"><div class="muted" style="font-size:12px">Metode Pembayaran</div><div style="font-size:14px"><strong>${paymentMethod}</strong></div></div>` : ""}
-              ${money ? `<div style="margin-top:10px"><div class="muted" style="font-size:12px">Total</div><div style="font-size:20px;font-weight:700">Rp ${money}</div></div>` : ""}
-              ${trackingUrl ? `<div style="margin-top:12px"><a href="${trackingUrl}" style="color:#fff;" class="btn">Lacak Status</a></div>` : ""}
-              ${actionUrl ? `<div style="margin-top:8px"><a href="${actionUrl}" class="btn btn-green">${actionLabel || "Buka Link"}</a></div>` : ""}
-            </td>
-            <td class="col stack" style="width:50%;min-width:240px">
-              <div class="muted" style="font-size:12px;margin-bottom:6px">QR Pickup</div>
-              ${
-                qrCid
-                  ? `<img src="cid:${qrCid}" alt="QR Pickup" class="qrimg">`
-                  : `<div style="padding:12px;border:1px dashed #cbd5e1;border-radius:8px;font-size:12px;color:#64748b">QR tidak tersedia</div>`
-              }
-            </td>
-          </tr></table>
-        </td></tr>
-        <tr><td style="border-top:1px solid #e5e7eb;padding:14px 20px;font-size:12px" class="muted">
-          <p style="margin:0 0 6px 0;color:#ef4444">*Gunakan QR Code ini untuk melakukan pengambilan.</p>
-          Terima kasih telah mempercayai layanan kami — Shoes Care
-        </td></tr>
+    title: string;
+    subtitle?: string;
+    code: string;
+    name?: string;
+    email?: string;
+    amount?: number;
+    paymentMethod?: string;
+    trackingUrl?: string;
+    actionUrl?: string;
+    actionLabel?: string;
+    qrCid?: string;
+  }) => {
+    const {
+      title,
+      subtitle,
+      code,
+      name,
+      email,
+      amount,
+      paymentMethod,
+      trackingUrl,
+      actionUrl,
+      actionLabel,
+      qrCid,
+    } = opts;
+    const money =
+      typeof amount === "number"
+        ? new Intl.NumberFormat("id-ID").format(amount)
+        : undefined;
+  
+    return `<!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="utf-8">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>${title}</title>
+    </head>
+    <body style="margin:0;padding:24px 0;background:#f6f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111827">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+              <!-- Header -->
+              <tr>
+                <td style="background:#111827;color:#fff;padding:16px 20px">
+                  <div style="font-size:18px;font-weight:700;margin:0">${title}</div>
+                  ${subtitle ? `<div style="font-size:12px;color:#9ca3af;margin-top:4px">${subtitle}</div>` : ""}
+                </td>
+              </tr>
+              <!-- Content -->
+              <tr>
+                <td style="padding:20px">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <!-- Left Column -->
+                      <td valign="top" style="width:50%;padding-right:16px">
+                        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Kode Transaksi</div>
+                        <div style="font-size:16px;font-weight:600;margin-bottom:16px">${code}</div>
+                        
+                        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Customer</div>
+                        <div style="font-size:14px;margin-bottom:16px">${name || "-"}${email ? ` (${email})` : ""}</div>
+                        
+                        ${paymentMethod ? `
+                        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Metode Pembayaran</div>
+                        <div style="font-size:14px;font-weight:600;margin-bottom:16px">${paymentMethod}</div>
+                        ` : ""}
+                        
+                        ${money ? `
+                        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Total</div>
+                        <div style="font-size:20px;font-weight:700;margin-bottom:16px">Rp ${money}</div>
+                        ` : ""}
+                        
+                        ${trackingUrl ? `
+                        <div style="margin-top:12px">
+                          <a href="${trackingUrl}" style="display:inline-block;background:#0ea5e9;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Lacak Status</a>
+                        </div>
+                        ` : ""}
+                        
+                        ${actionUrl ? `
+                        <div style="margin-top:12px">
+                          <a href="${actionUrl}" style="display:inline-block;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">${actionLabel || "Buka Link"}</a>
+                        </div>
+                        ` : ""}
+                      </td>
+                      <!-- Right Column - QR Code -->
+                      <td valign="top" style="width:50%;text-align:center">
+                        <div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:left">QR Pickup</div>
+                        ${
+                          qrCid
+                            ? `<img src="cid:${qrCid}" alt="QR Pickup" style="width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;display:block">`
+                            : `<div style="padding:20px;border:1px dashed #cbd5e1;border-radius:8px;font-size:12px;color:#64748b">QR tidak tersedia</div>`
+                        }
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <!-- Footer -->
+              <tr>
+                <td style="border-top:1px solid #e5e7eb;padding:16px 20px;font-size:12px;color:#6b7280">
+                  <p style="margin:0 0 8px 0;color:#ef4444;font-weight:600">*Gunakan QR Code ini untuk melakukan pengambilan.</p>
+                  <p style="margin:0">Terima kasih telah mempercayai layanan kami — Shoes Care</p>
+                </td>
+              </tr>
+            </table>
+            <!-- Support Text -->
+            <div style="max-width:600px;margin:16px auto 0;text-align:center;color:#94a3b8;font-size:12px">
+              Butuh bantuan? Hubungi support.
+            </div>
+          </td>
+        </tr>
       </table>
-      <div style="max-width:600px;margin:10px auto 0;text-align:center;color:#94a3b8;font-size:12px;padding-bottom:16px">Butuh bantuan? Hubungi support.</div>
-    </td></tr></table>
-  </body></html>`;
-};
+    </body>
+    </html>`;
+  };
 
 export const message = (name: string, otp: string | number) => {
   const otpStr = String(otp);
