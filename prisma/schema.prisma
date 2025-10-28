@@ -173,7 +173,6 @@ model Customer {
 
   // optional extended profile
   name                String?
-  phone               String?
   activatedAt         DateTime? @map("activated_at")
   activationCode      String?   @map("activation_code")
   activationExpiresAt DateTime? @map("activation_expires_at")

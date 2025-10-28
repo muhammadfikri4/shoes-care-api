@@ -7,7 +7,7 @@ export const getUserByEmail = async (email: string) =>
 export const getUserByEmailAndRole = async (email: string, role: Role) =>
   prisma.user.findFirst({ where: { email, role } });
 export const getUserById = async (id: string) =>
-  prisma.user.findUnique({ where: { id } });
+  prisma.user.findUnique({ where: { id }, include: { Customer: true } });
 export const createUser = async (data: RegisterDTO) =>
   prisma.user.create({ data });
 export const createUserRaw = async (data: {
@@ -27,4 +27,19 @@ export const upsertCustomerByEmail = async (email: string, name?: string) => {
     });
   }
   return customer;
+};
+
+export const getCustomerRegisterByEmail = async (email: string) => {
+  return prisma.user.findFirst({
+    where: {
+      email,
+      role: Role.CUSTOMER,
+      password: {
+        not: null,
+      },
+      Customer: {
+        isNot: null,
+      },
+    },
+  });
 };

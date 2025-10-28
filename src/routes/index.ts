@@ -8,6 +8,7 @@ import userRoutes from "../app/users/users.route";
 import { VerifyToken } from "../middleware/verifyToken";
 import racksRoute from "../app/racks/racks.route";
 import transactionsRoute from "../app/transactions/transactions.route";
+import promosRoute from "../app/promos/promos.route";
 
 const route = Router();
 
@@ -16,6 +17,7 @@ route.use('/auth',authRoutes);
 route.use('/users', VerifyToken(), userRoutes);
 route.use('/racks', racksRoute);
 route.use('/transactions', transactionsRoute);
+route.use('/promos', promosRoute);
 
 route.get("/", (req: Request, res: Response) => {
   return res.json({ message: "Hello World 🚀" });

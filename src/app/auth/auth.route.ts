@@ -8,7 +8,7 @@ const router = Router();
 router
 .post("/register", validateRequest(registerSchema), authController.register)
 .post("/login", validateRequest(loginSchema), authController.login)
-.post("/customer/register", validateRequest(customerRegisterSchema), authController.customerRegisterStart)
+.post("/register/customer", validateRequest(customerRegisterSchema), authController.customerRegisterStart)
 .post("/customer/register/verify", validateRequest(customerRegisterVerifySchema), authController.customerRegisterVerify);
 
 export default router;
