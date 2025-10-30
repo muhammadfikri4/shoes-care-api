@@ -67,7 +67,14 @@ export const checkPromoByCodeService = async (
 ): Promise<PromoCheckResponse | ErrorApp> => {
   if (!userId)
     return new ErrorApp("Unauthorized", 401, MESSAGE_CODE.UNAUTHORIZED);
-  const promo = await checkPromoForUserRepo(userId, code);
+  const user = await userRepository.getUserById(userId);
+  if (!user) {
+    return new ErrorApp("User not found", 404, MESSAGE_CODE.NOT_FOUND);
+  }
+  const promo = await checkPromoForUserRepo(
+    code,
+    user.role === Role.CUSTOMER ? userId : undefined
+  );
   if (!promo)
     return new ErrorApp(
       "Promo code tidak valid",

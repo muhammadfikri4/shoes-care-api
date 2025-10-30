@@ -34,7 +34,7 @@ Transactions
 - GET `/transactions/lookup?qr=...` atau `?invoice=...` — lacak status transaksi
 
 Catatan
-- Format QR: `sc-pos:tx:{INVOICE}`
+- Format QR: `qr-{INVOICE}`
 - Ketika membuat transaksi dengan `customerEmail`, sistem akan membuat customer jika email belum terdaftar; jika sudah ada akan menggunakan data yang ada. Snapshot `customerName` & `customerEmail` disimpan di transaksi.
 
 ## Menjalankan

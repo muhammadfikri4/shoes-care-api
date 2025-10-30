@@ -77,7 +77,7 @@ export const getPromosCount = async (query: PromosQueryParams) => {
   });
 };
 
-export const checkPromoForUserRepo = async (userId: string, code: string) =>
+export const checkPromoForUserRepo = async (code: string, userId?: string) =>
   prisma.promo.findFirst({
-    where: { userId, code, isActive: true, used: false },
+    where: { ...(userId && { userId }), code, isActive: true, used: false },
   });

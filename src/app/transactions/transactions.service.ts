@@ -154,8 +154,8 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     }
   }
 
-  // 6) Prepare invoice (use code) + QR data (must match scanner parser: sc-pos:tx:{code})
-  const qrData = `sc-pos:tx:${code}`;
+  // 6) Prepare invoice (use code) + QR data (must match scanner parser: qr-{code})
+  const qrData = `qr-${code}`;
 
   const ensureTransaction: EnsureTransactionDTO = {
     status: PaymentStatus.PENDING,
@@ -334,12 +334,11 @@ export const listTransactionsByUser = async (
 };
 
 export const scanPickup = async (data: ScanQRDTO) => {
-  // qr expected format sc-pos:tx:{invoice}
-  const parts = data.qr.split(":");
-  if (parts.length !== 3 || parts[0] !== "sc-pos" || parts[1] !== "tx") {
+  // qr expected format qr-{invoice}
+  if (!data.qr.startsWith("qr-")) {
     return new ErrorApp("QR tidak valid", 400, MESSAGE_CODE.BAD_REQUEST);
   }
-  const invoice = parts[2];
+  const invoice = data.qr.substring(3); // Remove "qr-" prefix
   const trx = await getTransactionByInvoiceRepo(invoice);
   if (!trx)
     return new ErrorApp(
@@ -369,9 +368,8 @@ export const lookupTransaction = async (params: {
   let code: string | undefined = params.code;
   console.log({ params });
   if (params.qr && !code) {
-    const parts = params.qr.split(":");
-    if (parts.length === 3 && parts[0] === "sc-pos" && parts[1] === "tx") {
-      code = parts[2];
+    if (params.qr.startsWith("qr-")) {
+      code = params.qr.substring(3); // Remove "qr-" prefix
     } else {
       return new ErrorApp("QR tidak valid", 400, MESSAGE_CODE.BAD_REQUEST);
     }
