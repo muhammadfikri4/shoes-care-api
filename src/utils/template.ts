@@ -42,37 +42,37 @@ export const buildPromoHtml = (opts: {
 };
 
 export const buildInvoiceHtml = (opts: {
-    title: string;
-    subtitle?: string;
-    code: string;
-    name?: string;
-    email?: string;
-    amount?: number;
-    paymentMethod?: string;
-    trackingUrl?: string;
-    actionUrl?: string;
-    actionLabel?: string;
-    qrCid?: string;
-  }) => {
-    const {
-      title,
-      subtitle,
-      code,
-      name,
-      email,
-      amount,
-      paymentMethod,
-      trackingUrl,
-      actionUrl,
-      actionLabel,
-      qrCid,
-    } = opts;
-    const money =
-      typeof amount === "number"
-        ? new Intl.NumberFormat("id-ID").format(amount)
-        : undefined;
-  
-    return `<!DOCTYPE html>
+  title: string;
+  subtitle?: string;
+  code: string;
+  name?: string;
+  email?: string;
+  amount?: number;
+  paymentMethod?: string;
+  trackingUrl?: string;
+  actionUrl?: string;
+  actionLabel?: string;
+  qrCid?: string;
+}) => {
+  const {
+    title,
+    subtitle,
+    code,
+    name,
+    email,
+    amount,
+    paymentMethod,
+    trackingUrl,
+    actionUrl,
+    actionLabel,
+    qrCid,
+  } = opts;
+  const money =
+    typeof amount === "number"
+      ? new Intl.NumberFormat("id-ID").format(amount)
+      : undefined;
+
+  return `<!DOCTYPE html>
     <html lang="id">
     <head>
       <meta charset="utf-8">
@@ -105,27 +105,43 @@ export const buildInvoiceHtml = (opts: {
                         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Customer</div>
                         <div style="font-size:14px;margin-bottom:16px">${name || "-"}${email ? ` (${email})` : ""}</div>
                         
-                        ${paymentMethod ? `
+                        ${
+                          paymentMethod
+                            ? `
                         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Metode Pembayaran</div>
                         <div style="font-size:14px;font-weight:600;margin-bottom:16px">${paymentMethod}</div>
-                        ` : ""}
+                        `
+                            : ""
+                        }
                         
-                        ${money ? `
+                        ${
+                          money
+                            ? `
                         <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Total</div>
                         <div style="font-size:20px;font-weight:700;margin-bottom:16px">Rp ${money}</div>
-                        ` : ""}
+                        `
+                            : ""
+                        }
                         
-                        ${trackingUrl ? `
+                        ${
+                          trackingUrl
+                            ? `
                         <div style="margin-top:12px">
                           <a href="${trackingUrl}" style="display:inline-block;background:#0ea5e9;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">Lacak Status</a>
                         </div>
-                        ` : ""}
+                        `
+                            : ""
+                        }
                         
-                        ${actionUrl ? `
+                        ${
+                          actionUrl
+                            ? `
                         <div style="margin-top:12px">
                           <a href="${actionUrl}" style="display:inline-block;background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">${actionLabel || "Buka Link"}</a>
                         </div>
-                        ` : ""}
+                        `
+                            : ""
+                        }
                       </td>
                       <!-- Right Column - QR Code -->
                       <td valign="top" style="width:50%;text-align:center">
@@ -157,7 +173,52 @@ export const buildInvoiceHtml = (opts: {
       </table>
     </body>
     </html>`;
-  };
+};
+
+export const buildResetPasswordHtml = (opts: {
+  name?: string;
+  resetUrl: string;
+}) => {
+  const { name, resetUrl } = opts;
+  return `<!DOCTYPE html>
+  <html lang="id">
+  <head>
+    <meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1"><title>Reset Password</title>
+    <style>
+      img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic}
+      table{border-collapse:collapse!important}body{margin:0!important;padding:0!important;background:#f8fafc}
+      a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important}
+      .container{width:600px;max-width:600px}
+      .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden}
+      .card-header{padding:16px 20px;background:#0b6bcb;color:#fff}
+      .px{padding-left:20px;padding-right:20px}.ptb{padding-top:20px;padding-bottom:20px}
+      .muted{color:#475569}
+      .btn{background:#0b6bcb;color:#fff;padding:14px 24px;border-radius:8px;display:inline-block;font-size:14px;font-weight:600;text-decoration:none}
+      @media (prefers-color-scheme: dark){.bg-body{background:#0b1220!important}.card{background:#0f172a!important;border-color:#1f2937!important;color:#e5e7eb!important}.card-header{background:#dc2626!important;color:#fff!important}.muted{color:#9ca3af!important}.btn{color:#fff!important}}
+      @media screen and (max-width:600px){.container{width:100%!important}.px{padding-left:16px!important;padding-right:16px!important}.ptb{padding-top:16px!important;padding-bottom:16px!important}.btn{display:block!important;width:100%!important;text-align:center!important}}
+    </style>
+  </head>
+  <body class="bg-body" style="background:#f8fafc;margin:0;padding:24px 0">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+      <table role="presentation" class="container card" cellpadding="0" cellspacing="0">
+        <tr><td class="card-header"><h1 style="margin:0;font-size:20px;line-height:1.2;font-weight:700">Reset Password</h1></td></tr>
+        <tr><td class="px ptb">
+          <p style="margin:0 0 8px 0">Halo ${name || "Customer"},</p>
+          <p class="muted" style="margin:0 0 16px 0">Kami menerima permintaan untuk mereset password akun Anda. Klik tombol di bawah ini untuk membuat password baru:</p>
+          <div style="margin:20px 0">
+            <a href="${resetUrl}" class="btn">Reset Password</a>
+          </div>
+          <p class="muted" style="margin:16px 0 0 0;font-size:12px;color:#64748b">Link ini akan kadaluarsa dalam 1 jam. Jika Anda tidak meminta reset password, abaikan email ini.</p>
+          <p class="muted" style="margin:8px 0 0 0;font-size:12px;color:#64748b">Atau copy dan paste URL berikut ke browser Anda:<br/>
+          <a href="${resetUrl}">Klik Disini Untuk Mengganti Password</a></p>
+          <p style="margin:16px 0 0 0">Salam hangat,<br/>Shoes Care</p>
+        </td></tr>
+      </table>
+      <div style="max-width:560px;margin:10px auto 0;text-align:center;color:#94a3b8;font-size:12px;padding-bottom:16px">Butuh bantuan? Hubungi support.</div>
+    </td></tr></table>
+  </body></html>`;
+};
 
 export const message = (name: string, otp: string | number) => {
   const otpStr = String(otp);

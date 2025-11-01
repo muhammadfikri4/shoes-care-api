@@ -33,4 +33,13 @@ export const customerRegisterVerifySchema = Joi.object({
   key: Joi.string().uuid().required(),
   otp: Joi.string().length(6).required(),
 });
-  
+
+export const forgotPasswordCustomerSchema = Joi.object({
+  email: Joi.string().email().required(),
+});
+
+export const resetPasswordCustomerSchema = Joi.object({
+  resetPasswordToken: Joi.string().required(),
+  password: Joi.string().min(6).max(100).required(),
+});
+

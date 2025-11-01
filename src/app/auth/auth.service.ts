@@ -1,11 +1,13 @@
 import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { config } from "../../libs";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { generateRandom } from "../../utils/generate-random";
 import { ErrorApp } from "../../utils/http-error";
 import { MESSAGES } from "../../utils/Messages";
+import { SendResetPasswordEmail } from "../../utils/MailerConfig";
 import * as customersRepository from "../customers/customers.repository";
 import { getOtpByIdRepo, markOtpUsedRepo } from "../otp/otp.repository";
 import * as userRepository from "../users/users.repository";
@@ -13,8 +15,10 @@ import {
   CustomerOtpVerifyDTO,
   CustomerRegisterDTO,
   CustomerRegisterVerifyDTO,
+  ForgotPasswordCustomerDTO,
   LoginDTO,
   RegisterDTO,
+  ResetPasswordCustomerDTO,
 } from "./auth.dto";
 
 export const authService = {
@@ -157,4 +161,107 @@ export const customerRegisterVerify = async (
   });
   await markOtpUsedRepo(record.id);
   return { ok: true };
+};
+
+export const forgotPasswordCustomer = async (
+  data: ForgotPasswordCustomerDTO
+) => {
+  const { email } = data;
+
+  // Check if user exists and is a customer
+  const user = await userRepository.getUserByEmailAndRole(email, Role.CUSTOMER);
+  if (!user) {
+    return new ErrorApp(
+      "Email tidak terdaftar sebagai customer",
+      404,
+      MESSAGE_CODE.NOT_FOUND
+    );
+  }
+
+  // Check if customer is activated
+  const customer = await customersRepository.getCustomerByUserIdRepo(user.id);
+  if (!customer?.activatedAt) {
+    return new ErrorApp("Akun belum diaktifkan", 403, MESSAGE_CODE.FORBIDDEN);
+  }
+
+  // Generate reset token (32 bytes = 64 hex characters)
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Set expiry to 1 hour from now
+  const expiredAt = new Date();
+  expiredAt.setHours(expiredAt.getHours() + 1);
+
+  // Save token to database
+  await userRepository.updateUser(user.id, {
+    resetPasswordToken: resetToken,
+    resetPasswordTokenExpiredAt: expiredAt,
+  });
+
+  // Build reset URL with token as query param
+  const resetUrl = `${config.CLIENT_URL}/reset-password?reset_token=${resetToken}`;
+
+  // Send email
+  try {
+    await SendResetPasswordEmail({
+      to: email,
+      name: user.name,
+      resetUrl,
+    });
+  } catch (error) {
+    console.error("Failed to send reset password email:", error);
+    return new ErrorApp(
+      "Gagal mengirim email. Silakan coba lagi",
+      500,
+      MESSAGE_CODE.BAD_REQUEST
+    );
+  }
+
+  return { ok: true, message: "Email reset password telah dikirim" };
+};
+
+export const resetPasswordCustomer = async (data: ResetPasswordCustomerDTO) => {
+  const { resetPasswordToken, password } = data;
+
+  // We need to query by reset token, so let's use a custom query
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient();
+
+  const userWithToken = await prisma.user.findFirst({
+    where: {
+      resetPasswordToken,
+      role: Role.CUSTOMER,
+    },
+  });
+
+  if (!userWithToken) {
+    return new ErrorApp(
+      "Token tidak valid atau sudah digunakan",
+      400,
+      MESSAGE_CODE.BAD_REQUEST
+    );
+  }
+
+  // Check if token is expired
+  if (
+    !userWithToken.resetPasswordTokenExpiredAt ||
+    new Date(userWithToken.resetPasswordTokenExpiredAt) < new Date()
+  ) {
+    return new ErrorApp(
+      "Token sudah kadaluarsa. Silakan request ulang reset password",
+      400,
+      MESSAGE_CODE.BAD_REQUEST
+    );
+  }
+
+  // Hash new password
+  const hash = await bcrypt.hash(password, 10);
+
+  // Update password and clear reset token
+  await userRepository.updateUser(userWithToken.id, {
+    password: hash,
+    resetPasswordToken: null,
+    resetPasswordTokenExpiredAt: null,
+  });
+
+  return { ok: true, message: "Password berhasil diubah" };
 };

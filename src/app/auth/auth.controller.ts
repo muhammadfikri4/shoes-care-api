@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { authService, customerRegisterStart, customerRegisterVerify } from "../auth/auth.service";
+import { authService, customerRegisterStart, customerRegisterVerify, forgotPasswordCustomer, resetPasswordCustomer } from "../auth/auth.service";
 import { ErrorApp } from "../../utils/http-error";
 import { HandleResponse } from "../../utils/HandleResponse";
 import { MESSAGE_CODE } from "../../utils/error-code";
@@ -48,5 +48,21 @@ export const authController = {
       return
     }
     HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Akun berhasil diaktifkan", result);
+  },
+  forgotPasswordCustomer: async (req: Request, res: Response, next: NextFunction) => {
+    const result = await forgotPasswordCustomer(req.body);
+    if(result instanceof ErrorApp) {
+      next(result)
+      return
+    }
+    HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Email reset password telah dikirim", result);
+  },
+  resetPasswordCustomer: async (req: Request, res: Response, next: NextFunction) => {
+    const result = await resetPasswordCustomer(req.body);
+    if(result instanceof ErrorApp) {
+      next(result)
+      return
+    }
+    HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Password berhasil diubah", result);
   },
 };

@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import { config } from "../libs";
 import { MailOptions } from "nodemailer/lib/smtp-pool";
 import QRCode from "qrcode";
-import { buildInvoiceHtml, buildPromoHtml, message } from "./template";
+import { buildInvoiceHtml, buildPromoHtml, buildResetPasswordHtml, message } from "./template";
 
 export const transporter = nodemailer.createTransport({
   host: config.SMTP_HOST,
@@ -185,5 +185,20 @@ export const SendReadyToPickupEmail = async (payload: {
           },
         ]
       : [],
+  });
+};
+
+export const SendResetPasswordEmail = async (payload: {
+  to: string;
+  name?: string;
+  resetUrl: string;
+}) => {
+  const { to, name, resetUrl } = payload;
+  const html = buildResetPasswordHtml({ name, resetUrl });
+  return transporter.sendMail({
+    to,
+    from: config.EMAIL_SENDER,
+    subject: "Reset Password - Shoes Care",
+    html,
   });
 };
