@@ -2,7 +2,12 @@ import nodemailer from "nodemailer";
 import { config } from "../libs";
 import { MailOptions } from "nodemailer/lib/smtp-pool";
 import QRCode from "qrcode";
-import { buildInvoiceHtml, buildPromoHtml, buildResetPasswordHtml, message } from "./template";
+import {
+  buildInvoiceHtml,
+  buildPromoHtml,
+  buildResetPasswordHtml,
+  message,
+} from "./template";
 
 export const transporter = nodemailer.createTransport({
   host: config.SMTP_HOST,
@@ -12,6 +17,11 @@ export const transporter = nodemailer.createTransport({
     user: config.SMTP_LOGIN,
     pass: config.SMTP_PASSWORD,
   },
+  requireTLS: true,
+  tls: {
+    rejectUnauthorized: false,
+  },
+  connectionTimeout: 10000,
 } as MailOptions);
 // export const transporter = nodemailer.createTransport({
 //     service: 'gmail',
@@ -195,7 +205,7 @@ export const SendResetPasswordEmail = async (payload: {
 }) => {
   const { to, name, resetUrl } = payload;
   const html = buildResetPasswordHtml({ name, resetUrl });
-  return await transporter.sendMail({
+  return transporter.sendMail({
     to,
     from: config.EMAIL_SENDER,
     subject: "Reset Password - Shoes Care",

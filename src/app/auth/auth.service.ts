@@ -168,16 +168,6 @@ export const forgotPasswordCustomer = async (
 ) => {
   const { email } = data;
   console.log("email => ", email);
-  console.log(
-    "config smtp => ",
-    JSON.stringify({
-      host: config.SMTP_HOST,
-      port: config.SMTP_PORT,
-      login: config.SMTP_LOGIN,
-      password: config.SMTP_PASSWORD,
-      user: config.SMTP_USER,
-    })
-  );
   // Check if user exists and is a customer
   const user = await userRepository.getUserByEmailAndRole(email, Role.CUSTOMER);
   if (!user) {
