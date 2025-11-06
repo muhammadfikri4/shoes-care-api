@@ -167,7 +167,17 @@ export const forgotPasswordCustomer = async (
   data: ForgotPasswordCustomerDTO
 ) => {
   const { email } = data;
-
+  console.log("email => ", email);
+  console.log(
+    "config smtp => ",
+    JSON.stringify({
+      host: config.SMTP_HOST,
+      port: config.SMTP_PORT,
+      login: config.SMTP_LOGIN,
+      password: config.SMTP_PASSWORD,
+      user: config.SMTP_USER,
+    })
+  );
   // Check if user exists and is a customer
   const user = await userRepository.getUserByEmailAndRole(email, Role.CUSTOMER);
   if (!user) {
@@ -177,6 +187,7 @@ export const forgotPasswordCustomer = async (
       MESSAGE_CODE.NOT_FOUND
     );
   }
+  console.log("user => ", JSON.stringify(user, null, 2));
 
   // Check if customer is activated
   const customer = await customersRepository.getCustomerByUserIdRepo(user.id);
@@ -186,10 +197,11 @@ export const forgotPasswordCustomer = async (
 
   // Generate reset token (32 bytes = 64 hex characters)
   const resetToken = crypto.randomBytes(32).toString("hex");
-
+  console.log("generate token => ", resetToken);
   // Set expiry to 1 hour from now
   const expiredAt = new Date();
   expiredAt.setHours(expiredAt.getHours() + 1);
+  console.log("generate expired => ", expiredAt);
 
   // Save token to database
   await userRepository.updateUser(user.id, {
@@ -202,11 +214,12 @@ export const forgotPasswordCustomer = async (
 
   // Send email
   try {
-    await SendResetPasswordEmail({
+    const res = await SendResetPasswordEmail({
       to: email,
       name: user.name,
       resetUrl,
     });
+    console.log("success send email => ", JSON.stringify(res, null, 2));
   } catch (error) {
     console.error("Failed to send reset password email:", error);
     return new ErrorApp(

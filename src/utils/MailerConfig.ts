@@ -195,7 +195,7 @@ export const SendResetPasswordEmail = async (payload: {
 }) => {
   const { to, name, resetUrl } = payload;
   const html = buildResetPasswordHtml({ name, resetUrl });
-  return transporter.sendMail({
+  return await transporter.sendMail({
     to,
     from: config.EMAIL_SENDER,
     subject: "Reset Password - Shoes Care",
