@@ -1,6 +1,5 @@
-import nodemailer from "nodemailer";
+import * as brevo from "@getbrevo/brevo";
 import { config } from "../libs";
-import { MailOptions } from "nodemailer/lib/smtp-pool";
 import QRCode from "qrcode";
 import {
   buildInvoiceHtml,
@@ -9,36 +8,24 @@ import {
   message,
 } from "./template";
 
-export const transporter = nodemailer.createTransport({
-  host: config.SMTP_HOST,
-  port: config.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: config.SMTP_LOGIN,
-    pass: config.SMTP_PASSWORD,
-  },
-  requireTLS: true,
-  tls: {
-    rejectUnauthorized: false,
-  },
-  connectionTimeout: 10000,
-} as MailOptions);
-// export const transporter = nodemailer.createTransport({
-//     service: 'gmail',
-//     host: 'smtp.gmail.com',
-//     auth: {
-//         user: 'muhfikriantoaji@gmail.com',
-//         pass: 'qvzs ugvq unss wbwq'
-//     }
-// });
+// Initialize Brevo API client
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  config.EMAIL.API_KEY ?? ""
+);
 
 export const SendEmail = async (to: string, name: string, otp: number) => {
-  return await transporter.sendMail({
-    to,
-    from: config.EMAIL_SENDER,
-    subject: "OTP Verification",
-    html: message(name, otp),
-  });
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = "OTP Verification";
+  sendSmtpEmail.htmlContent = message(name, otp);
+
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
 export const SendPromoCodeEmail = async (
@@ -48,12 +35,16 @@ export const SendPromoCodeEmail = async (
   discountPercent = 100
 ) => {
   const html = buildPromoHtml({ name, code, discountPercent });
-  return transporter.sendMail({
-    to,
-    from: config.EMAIL_SENDER,
-    subject: `Kode Promo Anda: ${code}`,
-    html,
-  });
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = `Kode Promo Anda: ${code}`;
+  sendSmtpEmail.htmlContent = html;
+
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
 export const SendTransactionNotificationEmail = async (payload: {
@@ -98,22 +89,25 @@ export const SendTransactionNotificationEmail = async (payload: {
     qrCid: qrPng ? "qr-pickup" : undefined,
   });
 
-  return transporter.sendMail({
-    to,
-    from: config.EMAIL_SENDER,
-    subject: `Invoice ${code} dibuat`,
-    html,
-    attachments: qrPng
-      ? [
-          {
-            filename: "qr.png",
-            content: qrPng,
-            contentType: "image/png",
-            cid: "qr-pickup",
-          },
-        ]
-      : [],
-  });
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = `Invoice ${code} dibuat`;
+  sendSmtpEmail.htmlContent = html;
+
+  if (qrPng) {
+    sendSmtpEmail.attachment = [
+      {
+        name: "qr.png",
+        content: qrPng.toString("base64"),
+      },
+    ];
+  }
+
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
 export const SendPaymentSuccessEmail = async (payload: {
@@ -140,22 +134,26 @@ export const SendPaymentSuccessEmail = async (payload: {
     trackingUrl,
     qrCid: qrPng ? "qr-pickup" : undefined,
   });
-  return transporter.sendMail({
-    to,
-    from: config.EMAIL_SENDER,
-    subject: `Pembayaran invoice ${code} diterima`,
-    html,
-    attachments: qrPng
-      ? [
-          {
-            filename: "qr.png",
-            content: qrPng,
-            contentType: "image/png",
-            cid: "qr-pickup",
-          },
-        ]
-      : [],
-  });
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = `Pembayaran invoice ${code} diterima`;
+  sendSmtpEmail.htmlContent = html;
+
+  if (qrPng) {
+    sendSmtpEmail.attachment = [
+      {
+        name: "qr.png",
+        content: qrPng.toString("base64"),
+      },
+    ];
+  }
+
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
 export const SendReadyToPickupEmail = async (payload: {
@@ -180,22 +178,26 @@ export const SendReadyToPickupEmail = async (payload: {
     trackingUrl,
     qrCid: qrPng ? "qr-pickup" : undefined,
   });
-  return transporter.sendMail({
-    to,
-    from: config.EMAIL_SENDER,
-    subject: `Pesanan ${code} siap diambil`,
-    html,
-    attachments: qrPng
-      ? [
-          {
-            filename: "qr.png",
-            content: qrPng,
-            contentType: "image/png",
-            cid: "qr-pickup",
-          },
-        ]
-      : [],
-  });
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = `Pesanan ${code} siap diambil`;
+  sendSmtpEmail.htmlContent = html;
+
+  if (qrPng) {
+    sendSmtpEmail.attachment = [
+      {
+        name: "qr.png",
+        content: qrPng.toString("base64"),
+      },
+    ];
+  }
+
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
 export const SendResetPasswordEmail = async (payload: {
@@ -205,10 +207,15 @@ export const SendResetPasswordEmail = async (payload: {
 }) => {
   const { to, name, resetUrl } = payload;
   const html = buildResetPasswordHtml({ name, resetUrl });
-  return transporter.sendMail({
-    to,
-    from: config.EMAIL_SENDER,
-    subject: "Reset Password - Shoes Care",
-    html,
-  });
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = "Reset Password - Shoes Care";
+  sendSmtpEmail.htmlContent = html;
+
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
