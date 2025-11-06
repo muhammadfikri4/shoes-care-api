@@ -207,14 +207,14 @@ export const buildResetPasswordHtml = (opts: {
 
     .container { width: 100%; max-width: 600px; margin: 0 auto; }
     .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-    .card-header { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: #ffffff; padding: 28px 32px; }
+    .card-header { background: linear-gradient(135deg, rgb(38, 123, 220) 0%, rgb(68, 105, 239) 100%); color: #ffffff; padding: 28px 32px; }
     .content { padding: 32px; }
     .footer { padding: 24px 32px; border-top: 1px solid #e5e7eb; background: #f9fafb; }
 
     .btn-container { margin: 28px 0; text-align: center; }
     .btn {
       display: inline-block;
-      background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+      background: linear-gradient(135deg,rgb(38, 123, 220) 0%,rgb(68, 105, 239) 100%);
       color: #ffffff !important;
       padding: 16px 40px;
       border-radius: 8px;
@@ -289,10 +289,6 @@ export const buildResetPasswordHtml = (opts: {
                     <p style="margin:0 0 20px 0;font-size:14px;color:#6b7280;">
                       Jika Anda tidak meminta reset password, abaikan email ini dan password Anda akan tetap aman.
                     </p>
-                    <div class="url-box">
-                      <p style="margin:0 0 8px 0;font-size:12px;color:#6b7280;">Atau copy dan paste URL berikut ke browser Anda:</p>
-                      <p style="margin:0;font-size:13px;color:#0ea5e9;line-height:1.6;">${resetUrl}</p>
-                    </div>
                   </td>
                 </tr>
                 <tr>
@@ -305,9 +301,6 @@ export const buildResetPasswordHtml = (opts: {
                   </td>
                 </tr>
               </table>
-              <div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px;">
-                Butuh bantuan? Hubungi <a href="mailto:support@shoescare.com" style="color:#0ea5e9;text-decoration:none;">support@shoescare.com</a>
-              </div>
             </td>
           </tr>
         </table>
