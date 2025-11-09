@@ -42,8 +42,8 @@ export interface TransactionListFilterDTO extends Query {
   status?: TransactionStatus;
   startDate?: string;
   endDate?: string;
-  customerId?: string
-  userId?: string;
+  customerUserId?: string;
+  createdByUserId?: string;
 }
 
 export interface MidtransVANumber {
@@ -141,4 +141,26 @@ export interface PaymentPayload {
 export interface StatusNotify {
   payment: PaymentStatus;
   transaction: TransactionStatus;
+}
+
+export interface TransactionCreationDTO {
+  createdByUserId?: string | null;
+  customerUserId?: string | undefined;
+  basePrice: number;
+  finalPrice: number;
+  promoApplied: boolean;
+  code: string;
+  qrCodeData: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  paymentMethod?: PaymentMethod;
+  items: ProductItem[];
+  promoIdToUse?: string;
+  paymentStatus?: PaymentStatus;
+  paidAt?: Date;
+  cashPaid?: number;
+  cashChange?: number;
+  midtransToken?: string;
+  midtransRedirectUrl?: string;
 }

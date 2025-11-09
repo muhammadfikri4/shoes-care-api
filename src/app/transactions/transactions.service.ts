@@ -38,7 +38,6 @@ import {
   SendTransactionNotificationEmail,
 } from "../../utils/MailerConfig";
 import { createMidtransTransaction } from "../../utils/midtrans";
-import * as customerRepository from "../customers/customers.repository";
 import * as promoRepository from "../promos/promos.repository";
 import * as userRepository from "../users/users.repository";
 import { getDetailTransactionDTOMapper } from "./transaction.mapper";
@@ -56,38 +55,44 @@ interface EnsureTransactionDTO {
 const generateCode = () => `TRX-${+new Date()}`;
 
 export const ensureCustomer = async (data: CreateTransactionDTO) => {
-  let customerId: string | undefined;
   const email = data.customerEmail?.trim();
-  let userId: string | undefined;
+  let customerUserId: string | undefined;
   const name = data.customerName?.trim();
   const phone = data.customerPhone?.trim();
+
   if (email) {
-    const existingCustomer = await customerRepository.getCustomerByEmail(email);
-    if (existingCustomer) {
-      customerId = existingCustomer.id;
-      userId = existingCustomer.userId;
+    // Cek apakah email sudah terdaftar sebagai user
+    const existingUser = await userRepository.getUserByEmail(email);
+
+    if (existingUser) {
+      // Jika user adalah ADMIN atau SUPERADMIN, return error
+      if (existingUser.role === 'ADMIN' || existingUser.role === 'SUPERADMIN') {
+        throw new ErrorApp(
+          "Email ini terdaftar sebagai admin. Gunakan email lain untuk customer.",
+          400,
+          MESSAGE_CODE.BAD_REQUEST
+        );
+      }
+      // Jika user sudah ada sebagai CUSTOMER, gunakan ID-nya
+      customerUserId = existingUser.id;
     } else {
+      // Jika belum ada, buat user baru dengan role CUSTOMER
       const user = await userRepository.upsertCustomerByEmail(email, name);
-      userId = user.id;
-      const created = await customerRepository.createCustomerRepo({
-        userId: user.id,
-        name: user.name,
-        phone,
-      });
-      customerId = created.id;
+      customerUserId = user.id;
     }
   }
-  return { userId, customerId, name, email, phone };
+
+  return { customerUserId, name, email, phone };
 };
 
-export const createTransaction = async (data: CreateTransactionDTO) => {
-  const { customerId, email, name, phone, userId } = await ensureCustomer(data);
+export const createTransaction = async (data: CreateTransactionDTO, createdByUserId?: string) => {
+  const { customerUserId, email, name, phone } = await ensureCustomer(data);
   const code = generateCode();
 
   const rawItems: ProductItem[] = data?.items || [];
   let uploadedItems: ProductItem[] = [];
   if (rawItems.length) {
-    const uploadResult = await uploadItemFiles(userId, rawItems, code);
+    const uploadResult = await uploadItemFiles(customerUserId, rawItems, code);
     if (uploadResult instanceof ErrorApp) return uploadResult;
     const itemsData: ProductItem[] = uploadResult.itemsData;
     uploadedItems = itemsData.map((it: ProductItem) => {
@@ -120,7 +125,7 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
     const validation = await verifyPromoService(email, data.promoCode);
     if (validation instanceof ErrorApp) return validation;
     const promo = await promoRepository.getPromoByCodeRepo(data.promoCode);
-    if (!promo || (userId && promo.userId !== userId)) {
+    if (!promo || (customerUserId && promo.userId !== customerUserId)) {
       return new ErrorApp(
         "Kode promo tidak valid",
         400,
@@ -187,7 +192,6 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
       pending: `${config.CLIENT_URL}`,
     },
   };
-  console.log({ finalPrice });
 
   if (data.paymentMethod === PaymentMethod.QRIS) {
     const snap = await createMidtransTransaction(midtransPayload);
@@ -203,8 +207,8 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
   }
   // 8) Persist transaction atomically
   const created = await createTransactionAtomicRepo({
-    userId,
-    customerId,
+    createdByUserId,
+    customerUserId,
     basePrice: finalPrice,
     finalPrice,
     promoApplied,
@@ -225,13 +229,12 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
   });
 
   // 9) Check eligibility for awarding a new promo (10x completed since last used or none)
-  if (userId) {
-    const lastUsed = await promoRepository.getLastUsedPromoByUserRepo(userId);
+  if (customerUserId) {
+    const lastUsed = await promoRepository.getLastUsedPromoByUserRepo(customerUserId);
     const completedCount = await countCompletedTransactionsByUserSinceRepo(
-      userId,
+      customerUserId,
       lastUsed?.usedAt ?? undefined
     );
-    console.log({ completedCount });
     if (completedCount >= 1) {
       const genCode = () =>
         `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -243,7 +246,7 @@ export const createTransaction = async (data: CreateTransactionDTO) => {
       }
       try {
         const newPromo = await promoRepository.createPromoRepo({
-          userId,
+          userId: customerUserId,
           code: c,
           discountPercent: 100,
         });
@@ -316,14 +319,8 @@ export const listTransactionsByUser = async (
   userId: string,
   query: TransactionListFilterDTO = {}
 ) => {
-  const customer = await customerRepository.getCustomerByUserIdRepo(userId);
-  if (!customer) {
-    return {
-      data: [],
-      meta: Meta(0, 0, 0),
-    };
-  }
-  const q: TransactionListFilterDTO = { ...query, customerId: customer.id };
+  // Langsung gunakan userId sebagai customerUserId
+  const q: TransactionListFilterDTO = { ...query, customerUserId: userId };
   const { page = "1", perPage = "10" } = q;
   const [rows, total] = await Promise.all([
     listFilteredTransactionsRepo(q),
@@ -388,7 +385,7 @@ export const lookupTransaction = async (params: {
       404,
       MESSAGE_CODE.NOT_FOUND
     );
-  const safeUserId = trx.userId ?? "guest";
+  const safeUserId = trx.customerUserId ?? "guest";
   return {
     id: trx.id,
     invoice: trx.code,
@@ -427,7 +424,7 @@ export const getDetailTransaction = async (transactionId: string) => {
       404,
       MESSAGE_CODE.NOT_FOUND
     );
-  const safeUserId = trx.userId ?? "guest";
+  const safeUserId = trx.customerUserId ?? "guest";
   return getDetailTransactionDTOMapper(safeUserId, trx);
 };
 

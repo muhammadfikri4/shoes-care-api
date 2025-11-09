@@ -1,20 +1,17 @@
 import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { config } from "../../libs";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { generateRandom } from "../../utils/generate-random";
 import { ErrorApp } from "../../utils/http-error";
-import { MESSAGES } from "../../utils/Messages";
 import { SendResetPasswordEmail } from "../../utils/MailerConfig";
-import * as customersRepository from "../customers/customers.repository";
-import { getOtpByIdRepo, markOtpUsedRepo } from "../otp/otp.repository";
+import { MESSAGES } from "../../utils/Messages";
 import * as userRepository from "../users/users.repository";
 import {
   CustomerOtpVerifyDTO,
   CustomerRegisterDTO,
-  CustomerRegisterVerifyDTO,
   ForgotPasswordCustomerDTO,
   LoginDTO,
   RegisterDTO,
@@ -40,19 +37,7 @@ export const authService = {
     if (!ok) {
       return new ErrorApp("Invalid credentials", 400, MESSAGE_CODE.BAD_REQUEST);
     }
-    // If customer, ensure activated
-    if (data.role?.toString() === "CUSTOMER") {
-      const customer = await customersRepository.getCustomerByUserIdRepo(
-        user.id
-      );
-      if (!customer?.activatedAt) {
-        return new ErrorApp(
-          "Akun belum diaktifkan",
-          403,
-          MESSAGE_CODE.FORBIDDEN
-        );
-      }
-    }
+    // Customer sudah otomatis aktif setelah register
     const token = jwt.sign({ userId: user.id }, config.JWT_SECRET, {
       expiresIn: "7d",
     });
@@ -95,10 +80,6 @@ export const customerRegisterStart = async (data: CustomerRegisterDTO) => {
       name: name || email,
       password: hash,
     });
-    await customersRepository.createCustomerRepo({ userId: user.id, name });
-    await customersRepository.updateCustomerByUserIdRepo(user.id, {
-      activatedAt: new Date(),
-    });
     return { ok: true };
   }
   if (user.password) {
@@ -113,53 +94,6 @@ export const customerRegisterStart = async (data: CustomerRegisterDTO) => {
     password: hash,
     ...(name ? { name } : {}),
   });
-  const customer = await customersRepository.getCustomerByUserIdRepo(user.id);
-  if (!customer)
-    await customersRepository.createCustomerRepo({ userId: user.id, name });
-  await customersRepository.updateCustomerByUserIdRepo(user.id, {
-    activatedAt: new Date(),
-  });
-  return { ok: true };
-};
-
-export const customerRegisterVerify = async (
-  data: CustomerRegisterVerifyDTO
-) => {
-  const { key, otp } = data;
-  const record = await getOtpByIdRepo(key);
-  if (!record)
-    return new ErrorApp("OTP tidak ditemukan", 404, MESSAGE_CODE.NOT_FOUND);
-  if (record.purpose !== "CUSTOMER_REGISTER")
-    return new ErrorApp("OTP tidak valid", 400, MESSAGE_CODE.BAD_REQUEST);
-  if (record.usedAt)
-    return new ErrorApp("OTP sudah digunakan", 400, MESSAGE_CODE.BAD_REQUEST);
-  if (new Date(record.expiresAt) < new Date())
-    return new ErrorApp("OTP kedaluwarsa", 400, MESSAGE_CODE.BAD_REQUEST);
-  if (record.code !== otp)
-    return new ErrorApp("Kode OTP salah", 400, MESSAGE_CODE.BAD_REQUEST);
-
-  // resolve user
-  const user = record.userId
-    ? await userRepository.getUserById(record.userId)
-    : await userRepository.getUserByEmailAndRole(record.email, Role.CUSTOMER);
-  if (!user)
-    return new ErrorApp("User tidak ditemukan", 404, MESSAGE_CODE.NOT_FOUND);
-
-  // update password from stored hash
-  if (record.hashedPassword) {
-    await userRepository.updateUser(user.id, {
-      password: record.hashedPassword,
-    });
-  }
-  // ensure customer profile and activate
-  const customer = await customersRepository.getCustomerByUserIdRepo(user.id);
-  if (!customer) {
-    await customersRepository.createCustomerRepo({ userId: user.id });
-  }
-  await customersRepository.updateCustomerByUserIdRepo(user.id, {
-    activatedAt: new Date(),
-  });
-  await markOtpUsedRepo(record.id);
   return { ok: true };
 };
 
@@ -178,12 +112,6 @@ export const forgotPasswordCustomer = async (
     );
   }
   console.log("user => ", JSON.stringify(user, null, 2));
-
-  // Check if customer is activated
-  const customer = await customersRepository.getCustomerByUserIdRepo(user.id);
-  if (!customer?.activatedAt) {
-    return new ErrorApp("Akun belum diaktifkan", 403, MESSAGE_CODE.FORBIDDEN);
-  }
 
   // Generate reset token (32 bytes = 64 hex characters)
   const resetToken = crypto.randomBytes(32).toString("hex");

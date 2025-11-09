@@ -7,7 +7,10 @@ import {
   TransactionStatus,
 } from "@prisma/client";
 import { queryPagination } from "../../utils/Pagination";
-import { ProductItem, TransactionListFilterDTO } from "./transactions.dto";
+import {
+  TransactionCreationDTO,
+  TransactionListFilterDTO,
+} from "./transactions.dto";
 
 const prisma = new PrismaClient();
 
@@ -21,22 +24,25 @@ export const createTransactionRepo = async (data: {
 }) => prisma.transaction.create({ data });
 
 export const countTransactionByUserRepo = async (userId: string) =>
-  prisma.transaction.count({ where: { userId } });
+  prisma.transaction.count({ where: { customerUserId: userId } });
 
 export const listAllTransactionsRepo = async () =>
   prisma.transaction.findMany({
-    include: { customer: true },
+    include: { customerUser: true, createdByUser: true },
     orderBy: { createdAt: "desc" },
   });
 
 export const listTransactionsByUserRepo = async (userId: string) =>
   prisma.transaction.findMany({
-    where: { userId },
+    where: { customerUserId: userId },
     orderBy: { createdAt: "desc" },
   });
 
 export const getTransactionByIdRepo = async (id: string) =>
-  prisma.transaction.findUnique({ where: { id }, include: { customer: true } });
+  prisma.transaction.findUnique({
+    where: { id },
+    include: { customerUser: true, createdByUser: true },
+  });
 
 export const updateTransactionStatusRepo = async (
   id: string,
@@ -54,37 +60,19 @@ export const getRackByIdRepo = async (id: string) =>
 export const updateRackStatusRepo = async (id: string, status: RackStatus) =>
   prisma.rack.update({ where: { id }, data: { status } });
 
-export const createTransactionAtomicRepo = async (payload: {
-  userId?: string | null;
-  customerId?: string | undefined;
-  basePrice: number;
-  finalPrice: number;
-  promoApplied: boolean;
-  code: string;
-  qrCodeData: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  paymentMethod?: PaymentMethod;
-  items: ProductItem[];
-  promoIdToUse?: string;
-  paymentStatus?: PaymentStatus;
-  paidAt?: Date;
-  cashPaid?: number;
-  cashChange?: number;
-  midtransToken?: string;
-  midtransRedirectUrl?: string;
-}) => {
+export const createTransactionAtomicRepo = async (
+  payload: TransactionCreationDTO
+) => {
   const result = await prisma.$transaction(async (tx) => {
     const t = await tx.transaction.create({
       data: {
         code: payload.code,
-        userId: payload.userId ?? undefined,
-        customerId: payload.customerId,
+        createdByUserId: payload.createdByUserId ?? undefined,
+        customerUserId: payload.customerUserId,
         status:
           payload.paymentMethod === PaymentMethod.CASH
             ? TransactionStatus.IN_PROGRESS
-            :  TransactionStatus.CREATED,
+            : TransactionStatus.CREATED,
         price: Number(payload.basePrice),
         finalPrice: Number(payload.finalPrice),
         promoApplied: payload.promoApplied,
@@ -246,13 +234,13 @@ const buildTransactionWhere = (
     startDate,
     status,
     search,
-    userId,
-    customerId,
+    createdByUserId,
+    customerUserId,
   } = filters || {};
   const where: Prisma.TransactionWhereInput = {};
-  if (userId) where.userId = userId;
+  if (createdByUserId) where.createdByUserId = createdByUserId;
   if (status) where.status = status;
-  if (customerId) where.customerId = customerId;
+  if (customerUserId) where.customerUserId = customerUserId;
   if (startDate || endDate) {
     where.createdAt = {};
     if (startDate)
@@ -280,7 +268,7 @@ export const listFilteredTransactionsRepo = async (
 ) => {
   return prisma.transaction.findMany({
     where: buildTransactionWhere(query),
-    include: { customer: true, items: true },
+    include: { customerUser: true, createdByUser: true, items: true },
     orderBy: { createdAt: "desc" },
     ...queryPagination(query),
   });
@@ -295,7 +283,7 @@ export const countCompletedTransactionsByUserSinceRepo = async (
   since?: Date
 ) => {
   const where: Prisma.TransactionWhereInput = {
-    userId,
+    customerUserId: userId,
     status: TransactionStatus.IN_PROGRESS,
   };
   if (since) {

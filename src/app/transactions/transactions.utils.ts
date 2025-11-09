@@ -6,10 +6,6 @@ import {
   RemoveFileFromStorage,
   UploadFileToStorage,
 } from "../../utils/upload-file-to-storage";
-import {
-  createCustomerRepo,
-  getCustomerByUserIdRepo,
-} from "../customers/customers.repository";
 import { getPromoByCodeRepo } from "../promos/promos.repository";
 import { verifyPromoService } from "../promos/promos.service";
 import * as userRepository from "../users/users.repository";
@@ -40,7 +36,6 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
   if (!data.customerEmail)
     return {
       userId: undefined as string | undefined,
-      customerRecordId: undefined as string | undefined,
       snapName: undefined as string | undefined,
       snapEmail: undefined as string | undefined,
     };
@@ -51,17 +46,7 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
   const userId = user.id;
   const snapName = user.name ?? data.customerName ?? undefined;
   const snapEmail = user.email;
-  const existing = await getCustomerByUserIdRepo(user.id);
-  const customerRecordId = existing
-    ? existing.id
-    : (
-        await createCustomerRepo({
-          userId: user.id,
-          name: snapName,
-          phone: data.customerPhone,
-        })
-      ).id;
-  return { userId, customerRecordId, snapName, snapEmail };
+  return { userId, snapName, snapEmail };
 };
 
 export const computePricing = async (
