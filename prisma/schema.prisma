@@ -51,6 +51,10 @@ model User {
   resetPasswordToken          String?   @map("reset_password_token") @db.VarChar(255)
   resetPasswordTokenExpiredAt DateTime? @map("reset_password_token_expired_at")
 
+  // Promo eligibility tracking
+  promoEligibilityCount Int @default(0) @map("promo_eligibility_count")
+  totalPromosReceived   Int @default(0) @map("total_promos_received")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -175,7 +179,7 @@ model Promo {
   userId          String    @map("user_id") @db.Char(36)
   discountPercent Int       @default(100) @map("discount_percent")
   isActive        Boolean   @default(true) @map("is_active")
-  used            Boolean   @default(false)
+  isUsed          Boolean   @default(false) @map("is_used")
   usedAt          DateTime? @map("used_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 

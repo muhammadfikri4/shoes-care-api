@@ -20,7 +20,6 @@ import {
 } from "./transactions.dto";
 import {
   completeTransactionAtomicRepo,
-  countCompletedTransactionsByUserSinceRepo,
   countFilteredTransactionsRepo,
   createTransactionAtomicRepo,
   findTransactionDetailByInvoiceRepo,
@@ -228,14 +227,11 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     midtransRedirectUrl: ensureTransaction.redirectUrl || undefined,
   });
 
-  // 9) Check eligibility for awarding a new promo (10x completed since last used or none)
+  // 9) Check promo eligibility and issue promo if eligible
   if (customerUserId) {
-    const lastUsed = await promoRepository.getLastUsedPromoByUserRepo(customerUserId);
-    const completedCount = await countCompletedTransactionsByUserSinceRepo(
-      customerUserId,
-      lastUsed?.usedAt ?? undefined
-    );
-    if (completedCount >= 1) {
+    const customer = await userRepository.getUserById(customerUserId);
+    if (customer && customer.promoEligibilityCount >= 10) {
+      // Generate unique promo code
       const genCode = () =>
         `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
       let c = genCode();
@@ -244,19 +240,30 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
         if (!exists) break;
         c = genCode();
       }
+
       try {
+        // Issue new promo
         const newPromo = await promoRepository.createPromoRepo({
           userId: customerUserId,
           code: c,
           discountPercent: 100,
         });
-        if (email)
+
+        // Update user: reset counter and increment total promos
+        await userRepository.updateUserPromoTracking(customerUserId, {
+          promoEligibilityCount: 0,
+          totalPromosReceived: (customer.totalPromosReceived || 0) + 1,
+        });
+
+        // Send promo email
+        if (email) {
           await SendPromoCodeEmail(
             email,
             name || "",
             newPromo.code,
             newPromo.discountPercent ?? 100
           );
+        }
       } catch (e) {
         console.warn("Failed to issue promo:", e);
       }
@@ -488,5 +495,17 @@ export const markCompleted = async (data: TransactionIdDTO) => {
     previousStatus: trx.status,
     rackIds,
   });
+
+  // Increment promo eligibility counter for customer
+  if (trx.customerUserId) {
+    const customer = await userRepository.getUserById(trx.customerUserId);
+    if (customer) {
+      const newCount = (customer.promoEligibilityCount || 0) + 1;
+      await userRepository.updateUserPromoTracking(trx.customerUserId, {
+        promoEligibilityCount: newCount,
+      });
+    }
+  }
+
   return { ok: true };
 };

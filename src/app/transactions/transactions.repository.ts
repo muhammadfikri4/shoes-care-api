@@ -101,7 +101,7 @@ export const createTransactionAtomicRepo = async (
     if (payload.promoIdToUse) {
       await tx.promo.update({
         where: { id: payload.promoIdToUse },
-        data: { used: true, usedAt: new Date() },
+        data: { isUsed: true, usedAt: new Date() },
       });
     }
     await tx.transactionHistory.create({

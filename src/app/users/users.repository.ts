@@ -40,3 +40,16 @@ export const getCustomerRegisterByEmail = async (email: string) => {
     },
   });
 };
+
+export const updateUserPromoTracking = async (
+  userId: string,
+  data: {
+    promoEligibilityCount?: number;
+    totalPromosReceived?: number;
+  }
+) => {
+  return prisma.user.update({
+    where: { id: userId },
+    data,
+  });
+};

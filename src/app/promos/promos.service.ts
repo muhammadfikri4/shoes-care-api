@@ -23,7 +23,7 @@ export const verifyPromoService = async (email: string, code: string) => {
       MESSAGE_CODE.BAD_REQUEST
     );
   }
-  if (!promo.isActive || promo.used) {
+  if (!promo.isActive || promo.isUsed) {
     return new ErrorApp(
       "Promo code tidak aktif/terpakai",
       400,

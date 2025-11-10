@@ -10,23 +10,23 @@ export const getPromoByCodeRepo = async (code: string) =>
 export const markPromoUsedRepo = async (id: string) =>
   prisma.promo.update({
     where: { id },
-    data: { used: true, usedAt: new Date() },
+    data: { isUsed: true, usedAt: new Date() },
   });
 
 export const getPromoByCustomerId = async (userId: string, code: string) =>
   prisma.promo.findFirst({
-    where: { userId, used: false, usedAt: null, code },
+    where: { userId, isUsed: false, usedAt: null, code },
   });
 
 export const getLastUsedPromoByUserRepo = async (userId: string) =>
   prisma.promo.findFirst({
-    where: { userId, used: true, usedAt: { not: null } },
+    where: { userId, isUsed: true, usedAt: { not: null } },
     orderBy: { usedAt: "desc" },
   });
 
 export const getActivePromoForUserRepo = async (userId: string) =>
   prisma.promo.findFirst({
-    where: { userId, used: false, isActive: true },
+    where: { userId, isUsed: false, isActive: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -79,5 +79,5 @@ export const getPromosCount = async (query: PromosQueryParams) => {
 
 export const checkPromoForUserRepo = async (code: string, userId?: string) =>
   prisma.promo.findFirst({
-    where: { ...(userId && { userId }), code, isActive: true, used: false },
+    where: { ...(userId && { userId }), code, isActive: true, isUsed: false },
   });
