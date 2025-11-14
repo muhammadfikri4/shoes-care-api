@@ -1,6 +1,5 @@
 import {
   PaymentMethod,
-  PaymentStatus,
   TransactionStatus,
 } from "@prisma/client";
 import { Query } from "../../interface/Query";
@@ -138,11 +137,6 @@ export interface PaymentPayload {
   cashChange: number | undefined;
 }
 
-export interface StatusNotify {
-  payment: PaymentStatus;
-  transaction: TransactionStatus;
-}
-
 export interface TransactionCreationDTO {
   createdByUserId?: string | null;
   customerUserId?: string | undefined;
@@ -157,7 +151,6 @@ export interface TransactionCreationDTO {
   paymentMethod?: PaymentMethod;
   items: ProductItem[];
   promoIdToUse?: string;
-  paymentStatus?: PaymentStatus;
   paidAt?: Date;
   cashPaid?: number;
   cashChange?: number;

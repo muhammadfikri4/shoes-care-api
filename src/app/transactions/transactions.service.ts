@@ -1,6 +1,5 @@
 import {
   PaymentMethod,
-  PaymentStatus,
   TransactionStatus,
 } from "@prisma/client";
 import { MESSAGE_CODE } from "../../utils/error-code";
@@ -44,12 +43,6 @@ import { TransactionIdDTO } from "./transactions.dto";
 import { uploadItemFiles } from "./transactions.utils";
 
 // No direct prisma usage in service; repository handles DB
-
-interface EnsureTransactionDTO {
-  status: PaymentStatus;
-  token?: string | null;
-  redirectUrl?: string | null;
-}
 
 const generateCode = () => `TRX-${+new Date()}`;
 
@@ -161,16 +154,14 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
   // 6) Prepare invoice (use code) + QR data (must match scanner parser: qr-{code})
   const qrData = `qr-${code}`;
 
-  const ensureTransaction: EnsureTransactionDTO = {
-    status: PaymentStatus.PENDING,
-    token: null,
-    redirectUrl: "",
-  };
+  let midtransToken: string | undefined;
+  let midtransRedirectUrl: string | undefined;
   const payment: PaymentPayload = {
     cashChange: 0,
     cashPaid: 0,
     paidAt: undefined,
   };
+
   const midtransPayload: MidtransCreationDTO = {
     customer_details: {
       email,
@@ -195,11 +186,9 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
   if (data.paymentMethod === PaymentMethod.QRIS) {
     const snap = await createMidtransTransaction(midtransPayload);
     if (snap instanceof ErrorApp) return snap;
-    if (snap?.data?.token) ensureTransaction.token = snap?.data?.token;
-    if (snap?.data?.redirect_url)
-      ensureTransaction.redirectUrl = snap?.data?.redirect_url;
+    if (snap?.data?.token) midtransToken = snap?.data?.token;
+    if (snap?.data?.redirect_url) midtransRedirectUrl = snap?.data?.redirect_url;
   } else if (data.paymentMethod === PaymentMethod.CASH) {
-    ensureTransaction.status = PaymentStatus.PAID;
     payment.paidAt = new Date();
     payment.cashPaid = data.cashPaid ?? 0;
     payment.cashChange = Math.max(0, (payment.cashPaid || 0) - finalPrice);
@@ -219,12 +208,11 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     paymentMethod: data.paymentMethod,
     items: uploadedItems,
     promoIdToUse,
-    paymentStatus: ensureTransaction.status,
     paidAt: payment.paidAt,
     cashPaid: payment.cashPaid,
     cashChange: payment.cashChange,
-    midtransToken: ensureTransaction.token || undefined,
-    midtransRedirectUrl: ensureTransaction.redirectUrl || undefined,
+    midtransToken,
+    midtransRedirectUrl,
   });
 
   // 9) Check promo eligibility and issue promo if eligible
@@ -285,7 +273,7 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
         trackingUrl,
         amount: finalPrice,
         paymentMethod: data.paymentMethod,
-        midtransUrl: ensureTransaction.redirectUrl || undefined,
+        midtransUrl: midtransRedirectUrl || undefined,
       });
     }
   } catch (e) {
@@ -299,7 +287,7 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     finalPrice: created.finalPrice,
     promoApplied: created.promoApplied,
     paymentMethod: created.paymentMethod,
-    paymentStatus: created.paymentStatus,
+    status: created.status,
     midtransToken: created.midtransToken,
     midtransRedirectUrl: created.midtransRedirectUrl
       ? `${created.midtransRedirectUrl}#/gopay-qris`

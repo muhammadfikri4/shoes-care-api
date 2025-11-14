@@ -1,6 +1,5 @@
 import {
   PaymentMethod,
-  PaymentStatus,
   Prisma,
   PrismaClient,
   RackStatus,
@@ -81,7 +80,6 @@ export const createTransactionAtomicRepo = async (
         customerEmail: payload.customerEmail,
         customerPhone: payload.customerPhone,
         paymentMethod: payload.paymentMethod,
-        paymentStatus: payload.paymentStatus ?? PaymentStatus.PENDING,
         paidAt: payload.paidAt,
         cashPaid: Number(payload.cashPaid),
         cashChange: Number(payload.cashChange),
@@ -213,15 +211,14 @@ export const getTransactionById = async (transactionId: string) =>
     },
   });
 
-export const updatePaymentStatusByInvoiceRepo = async (
+export const updateTransactionStatusByInvoiceRepo = async (
   code: string,
-  paymentStatus: PaymentStatus,
-  paidAt?: Date,
-  status?: TransactionStatus
+  status: TransactionStatus,
+  paidAt?: Date
 ) =>
   prisma.transaction.update({
     where: { code },
-    data: { paymentStatus, paidAt, status },
+    data: { status, paidAt },
   });
 
 const buildTransactionWhere = (

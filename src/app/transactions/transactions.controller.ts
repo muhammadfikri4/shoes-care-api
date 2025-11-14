@@ -3,9 +3,12 @@ import { RequestWithAccessToken } from "../../interface/Request";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { HandleResponse } from "../../utils/HandleResponse";
 import * as transactionService from "./transactions.service";
-import { getTransactionByInvoiceRepo, updatePaymentStatusByInvoiceRepo } from "./transactions.repository";
-import { PaymentStatus, TransactionStatus } from "@prisma/client";
-import { CreateTransactionDTO, StatusNotify } from "./transactions.dto";
+import {
+  getTransactionByInvoiceRepo,
+  updateTransactionStatusByInvoiceRepo,
+} from "./transactions.repository";
+import { TransactionStatus } from "@prisma/client";
+import { CreateTransactionDTO } from "./transactions.dto";
 import { ErrorApp } from "../../utils/http-error";
 import { createTransactionSchema } from "./transactions.request";
 import { completeSchema, readyToPickupSchema } from "./transactions.request";
@@ -174,34 +177,31 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
     if (!order_id)
       return res.status(400).json({ message: "order_id is required" });
 
-    const status: StatusNotify = {
-      payment: PaymentStatus.PENDING,
-      transaction: TransactionStatus.CREATED,
-    };
-    if (transaction_status === "capture" || transaction_status === "settlement") {
-      status.payment = PaymentStatus.PAID;
-      status.transaction = TransactionStatus.IN_PROGRESS;
+    let status: TransactionStatus = TransactionStatus.CREATED;
+    let paidAt: Date | undefined;
+
+    if (
+      transaction_status === "capture" ||
+      transaction_status === "settlement"
+    ) {
+      status = TransactionStatus.IN_PROGRESS;
+      paidAt = new Date();
     } else if (
       transaction_status === "deny" ||
       transaction_status === "expire" ||
       transaction_status === "cancel"
     ) {
-      status.payment = PaymentStatus.FAILED;
-      status.transaction = TransactionStatus.CANCELLED;
+      status = TransactionStatus.CANCELLED;
     }
-    await updatePaymentStatusByInvoiceRepo(
-      order_id,
-      status.payment,
-      status.payment === PaymentStatus.PAID ? new Date() : undefined,
-      status.transaction
-    );
 
-    if (status.payment === PaymentStatus.PAID) {
+    await updateTransactionStatusByInvoiceRepo(order_id, status, paidAt);
+
+    if (status === TransactionStatus.IN_PROGRESS) {
       const trx = await getTransactionByInvoiceRepo(order_id);
       if (trx?.customerEmail) {
         const trackingBase = config.CLIENT_URL;
         const trackingUrl = trackingBase
-          ? `${trackingBase}?invoice=${encodeURIComponent(trx.code)}`
+          ? `${trackingBase}/my/transactions/${trx.id}`
           : undefined;
         await SendPaymentSuccessEmail({
           to: trx.customerEmail,
