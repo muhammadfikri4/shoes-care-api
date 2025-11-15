@@ -2,7 +2,6 @@ import {
   PaymentMethod,
   Prisma,
   PrismaClient,
-  RackStatus,
   TransactionStatus,
 } from "@prisma/client";
 import { queryPagination } from "../../utils/Pagination";
@@ -56,9 +55,6 @@ export const updateTransactionRepo = async (
 export const getRackByIdRepo = async (id: string) =>
   prisma.rack.findUnique({ where: { id } });
 
-export const updateRackStatusRepo = async (id: string, status: RackStatus) =>
-  prisma.rack.update({ where: { id }, data: { status } });
-
 export const createTransactionAtomicRepo = async (
   payload: TransactionCreationDTO
 ) => {
@@ -75,6 +71,7 @@ export const createTransactionAtomicRepo = async (
         price: Number(payload.basePrice),
         finalPrice: Number(payload.finalPrice),
         promoApplied: payload.promoApplied,
+        promoId: payload.promoIdToUse,
         qrCodeData: payload.qrCodeData,
         customerName: payload.customerName,
         customerEmail: payload.customerEmail,
@@ -120,7 +117,6 @@ export const getTransactionByInvoiceRepo = async (code: string) =>
 
 export const pickupTransactionAtomicRepo = async (payload: {
   id: string;
-  rackId?: string | null;
   previousStatus: TransactionStatus;
 }) => {
   await prisma.$transaction(async (tx) => {
@@ -128,12 +124,6 @@ export const pickupTransactionAtomicRepo = async (payload: {
       where: { id: payload.id },
       data: { status: TransactionStatus.COMPLETED, pickedUpAt: new Date() },
     });
-    if (payload.rackId) {
-      await tx.rack.update({
-        where: { id: payload.rackId },
-        data: { status: RackStatus.AVAILABLE },
-      });
-    }
     await tx.transactionHistory.create({
       data: {
         transactionId: payload.id,
@@ -168,21 +158,12 @@ export const readyToPickupAtomicRepo = async (payload: {
 export const completeTransactionAtomicRepo = async (payload: {
   id: string;
   previousStatus: TransactionStatus;
-  rackIds?: string[];
 }) => {
   await prisma.$transaction(async (tx) => {
     await tx.transaction.update({
       where: { id: payload.id },
       data: { status: TransactionStatus.COMPLETED, pickedUpAt: new Date() },
     });
-    if (payload.rackIds?.length) {
-      for (const rid of payload.rackIds) {
-        await tx.rack.update({
-          where: { id: rid },
-          data: { status: RackStatus.AVAILABLE },
-        });
-      }
-    }
     await tx.transactionHistory.create({
       data: {
         transactionId: payload.id,
@@ -200,6 +181,7 @@ export const findTransactionDetailByInvoiceRepo = async (code: string) =>
     include: {
       items: { include: { rack: true } },
       TransactionHistory: { orderBy: { changedAt: "asc" } },
+      promo: true,
     },
   });
 export const getTransactionById = async (transactionId: string) =>
@@ -208,6 +190,7 @@ export const getTransactionById = async (transactionId: string) =>
     include: {
       items: { include: { rack: true } },
       TransactionHistory: { orderBy: { changedAt: "asc" } },
+      promo: true,
     },
   });
 
@@ -265,7 +248,7 @@ export const listFilteredTransactionsRepo = async (
 ) => {
   return prisma.transaction.findMany({
     where: buildTransactionWhere(query),
-    include: { customerUser: true, createdByUser: true, items: true },
+    include: { customerUser: true, createdByUser: true, items: true, promo: true },
     orderBy: { createdAt: "desc" },
     ...queryPagination(query),
   });

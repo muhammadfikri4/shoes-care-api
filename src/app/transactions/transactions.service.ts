@@ -347,7 +347,6 @@ export const scanPickup = async (data: ScanQRDTO) => {
   }
   await pickupTransactionAtomicRepo({
     id: trx.id,
-    rackId: (trx.items || [])[0]?.rackId,
     previousStatus: trx.status,
   });
   return { ok: true };
@@ -475,13 +474,9 @@ export const markCompleted = async (data: TransactionIdDTO) => {
       400,
       MESSAGE_CODE.BAD_REQUEST
     );
-  const rackIds = (trx.items || [])
-    .map((it) => it.rackId)
-    .filter((v: string | null | undefined) => !!v) as string[];
   await completeTransactionAtomicRepo({
     id: trx.id,
     previousStatus: trx.status,
-    rackIds,
   });
 
   // Increment promo eligibility counter for customer

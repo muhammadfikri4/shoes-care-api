@@ -1,4 +1,3 @@
-import { RackStatus } from "@prisma/client";
 import { config } from "../../libs";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { ErrorApp } from "../../utils/http-error";
@@ -27,8 +26,6 @@ import { generateHmac } from "../../utils/crypto";
 export const validateRack = async (rackId: string) => {
   const rack = await getRackByIdRepo(rackId);
   if (!rack) return new ErrorApp("Rack not found", 404, MESSAGE_CODE.NOT_FOUND);
-  if (rack.status !== RackStatus.AVAILABLE)
-    return new ErrorApp("Rack not available", 400, MESSAGE_CODE.BAD_REQUEST);
   return rack;
 };
 

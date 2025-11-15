@@ -13,12 +13,6 @@ enum Role {
   CUSTOMER
 }
 
-enum RackStatus {
-  AVAILABLE
-  OCCUPIED
-  MAINTENANCE
-}
-
 enum TransactionStatus {
   CREATED
   IN_PROGRESS
@@ -60,11 +54,10 @@ model User {
 }
 
 model Rack {
-  id       String     @id @default(uuid())
-  code     String     @unique @db.VarChar(10)
-  name     String?    @db.VarChar(64)
-  location String?    @db.VarChar(64)
-  status   RackStatus @default(AVAILABLE)
+  id          String  @id @default(uuid())
+  code        String  @unique @db.VarChar(10)
+  name        String? @db.VarChar(64)
+  description String? @db.Text
 
   // relation
 
@@ -85,6 +78,7 @@ model Transaction {
   price        Int // base price
   finalPrice   Int     @map("final_price") // setelah diskon/promo
   promoApplied Boolean @default(false) @map("promo_applied")
+  promoId      String? @map("promo_id") @db.Char(36)
 
   // Payment & customer snapshot
   paymentMethod       PaymentMethod? @map("payment_method")
@@ -107,6 +101,7 @@ model Transaction {
 
   createdByUser User?             @relation("CreatedByUser", fields: [createdByUserId], references: [id])
   customerUser  User?             @relation("CustomerUser", fields: [customerUserId], references: [id])
+  promo         Promo?            @relation(fields: [promoId], references: [id])
   items         TransactionItem[]
 
   createdAt          DateTime             @default(now()) @map("created_at")
@@ -116,6 +111,7 @@ model Transaction {
   @@index([status])
   @@index([createdByUserId])
   @@index([customerUserId])
+  @@index([promoId])
   @@map("transactions")
 }
 
@@ -169,7 +165,8 @@ model Promo {
   usedAt          DateTime? @map("used_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
 
   @@map("promos")
 }
