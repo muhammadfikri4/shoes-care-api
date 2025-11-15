@@ -54,7 +54,10 @@ export const createTransactionController = async (
     return;
   }
   console.log({ combine });
-  const result = await transactionService.createTransaction(combine, req.userId);
+  const result = await transactionService.createTransaction(
+    combine,
+    req.userId
+  );
 
   if (result instanceof ErrorApp) {
     next(result);
@@ -204,7 +207,9 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
         if (trx.customerUserId) {
           try {
             const userRepository = await import("../users/users.repository");
-            const customer = await userRepository.getUserById(trx.customerUserId);
+            const customer = await userRepository.getUserById(
+              trx.customerUserId
+            );
             if (customer) {
               const newCount = (customer.promoEligibilityCount || 0) + 1;
               await userRepository.updateUserPromoTracking(trx.customerUserId, {
@@ -229,7 +234,7 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
             qrData: trx.qrCodeData,
             qrCodeUrl: trx.qrCodeUrl || undefined,
             trackingUrl,
-            amount: trx.finalPrice ?? trx.price,
+            amount: Number(trx.finalPrice ?? trx.price),
           });
         }
       }

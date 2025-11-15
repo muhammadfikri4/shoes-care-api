@@ -75,16 +75,16 @@ model Transaction {
   customerUserId  String?           @map("customer_user_id") @db.Char(36)
   status          TransactionStatus @default(CREATED)
 
-  price        Int // base price
-  finalPrice   Int     @map("final_price") // setelah diskon/promo
+  price        Decimal @db.Decimal(28, 2) // base price
+  finalPrice   Decimal @map("final_price") @db.Decimal(28, 2) // setelah diskon/promo
   promoApplied Boolean @default(false) @map("promo_applied")
   promoId      String? @map("promo_id") @db.Char(36)
 
   // Payment & customer snapshot
   paymentMethod       PaymentMethod? @map("payment_method")
   paidAt              DateTime?      @map("paid_at")
-  cashPaid            Int?           @map("cash_paid")
-  cashChange          Int?           @map("cash_change")
+  cashPaid            Decimal        @default(0) @map("cash_paid") @db.Decimal(28, 2)
+  cashChange          Decimal        @default(0) @map("cash_change") @db.Decimal(28, 2)
   midtransToken       String?        @map("midtrans_token") @db.VarChar(255)
   midtransRedirectUrl String?        @map("midtrans_redirect_url") @db.VarChar(512)
 
@@ -120,7 +120,7 @@ model TransactionItem {
   id            String  @id @default(uuid())
   transactionId String  @map("transaction_id") @db.Char(36)
   name          String  @db.VarChar(64)
-  price         Int // harga satuan
+  price         Decimal @db.Decimal(20, 2) // harga satuan
   estimateDay   Int?    @map("estimateDay")
   file          String  @db.VarChar(128)
   note          String? @db.Text

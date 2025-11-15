@@ -42,8 +42,8 @@ export const getDetailTransactionDTOMapper = async (
     id: data.id,
     code: data.code,
     status: data.status,
-    price: data.price,
-    finalPrice: data.finalPrice,
+    price: Number(data.price),
+    finalPrice: Number(data.finalPrice),
     promoApplied: data.promoApplied,
     paymentMethod: data.paymentMethod,
     qrCodeUrl,
@@ -56,7 +56,7 @@ export const getDetailTransactionDTOMapper = async (
     items: (data.items || [])?.map((it) => ({
       id: it.id,
       name: it.name,
-      price: it.price,
+      price: Number(it.price),
       photoUrl: it.file
         ? GetPublicURL(`transactions/shoes/${userId}/${it.file}`)
         : undefined,
