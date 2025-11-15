@@ -81,3 +81,27 @@ export const checkPromoForUserRepo = async (code: string, userId?: string) =>
   prisma.promo.findFirst({
     where: { ...(userId && { userId }), code, isActive: true, isUsed: false },
   });
+
+export const getPromoThresholdRepo = async (): Promise<number> => {
+  const config = await prisma.promoConfiguration.findFirst({
+    orderBy: { createdAt: "desc" },
+  });
+  // Default fallback ke 10 jika belum ada konfigurasi
+  return config?.requiredTransactions ?? 10;
+};
+
+export const upsertPromoConfigurationRepo = async (
+  id: string | undefined,
+  requiredTransactions: number
+) => {
+  if (id) {
+    return prisma.promoConfiguration.upsert({
+      where: { id },
+      update: { requiredTransactions },
+      create: { id, requiredTransactions },
+    });
+  }
+  return prisma.promoConfiguration.create({
+    data: { requiredTransactions },
+  });
+};

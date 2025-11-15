@@ -4,3 +4,6 @@ export interface PromoCheckResponse {
   discountPercent: number;
 }
 
+export interface PromoConfigurationUpsertDTO {
+  requiredTransactions: number;
+}

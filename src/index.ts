@@ -33,6 +33,7 @@ app.use(
       "Content-Type",
       "Date",
       "X-Api-Version",
+      "x-api-key",
       "",
     ],
     credentials: true,

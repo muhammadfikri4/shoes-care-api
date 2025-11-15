@@ -252,7 +252,9 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
   // 9) Check promo eligibility and issue promo if eligible
   if (customerUserId) {
     const customer = await userRepository.getUserById(customerUserId);
-    if (customer && customer.promoEligibilityCount >= 10) {
+    // Ambil threshold dari konfigurasi promo (default 10 jika tidak ada)
+    const threshold = await promoRepository.getPromoThresholdRepo();
+    if (customer && customer.promoEligibilityCount >= threshold) {
       // Generate unique promo code
       const genCode = () =>
         `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -312,7 +314,7 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     if (email) {
       const trackingBase = config.CLIENT_URL;
       const trackingUrl = trackingBase
-        ? `${trackingBase}/my/transactions/${created.id}`
+        ? `${trackingBase}/transaction/portal/${created.id}`
         : undefined;
       await SendTransactionNotificationEmail({
         to: email,
@@ -513,7 +515,7 @@ export const markReadyToPickup = async (data: TransactionIdDTO) => {
     if (trx.customerEmail) {
       const trackingBase = config.CLIENT_URL;
       const trackingUrl = trackingBase
-        ? `${trackingBase}?invoice=${encodeURIComponent(trx.code)}`
+        ? `${trackingBase}/transaction/portal/${trx.id}`
         : undefined;
       await SendReadyToPickupEmail({
         to: trx.customerEmail,
@@ -554,7 +556,7 @@ export const markCompleted = async (data: TransactionIdDTO) => {
     if (trx.customerEmail) {
       const trackingBase = config.CLIENT_URL;
       const trackingUrl = trackingBase
-        ? `${trackingBase}/my/transactions/${trx.id}`
+        ? `${trackingBase}/transaction/portal/${trx.id}`
         : undefined;
       await SendCompletedEmail({
         to: trx.customerEmail,

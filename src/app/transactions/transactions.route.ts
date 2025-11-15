@@ -34,6 +34,7 @@ router
   // Customer endpoint
   .get("/my", VerifyToken(), CatchWrapper(listMyTransactionsController))
   .get("/lookup", VerifyToken(), CatchWrapper(lookupTransactionController))
+  .get("/portal/:transactionId", CatchWrapper(getDetailTransaction))
   .get("/:transactionId", VerifyToken(), CatchWrapper(getDetailTransaction))
   .post(
     "/",

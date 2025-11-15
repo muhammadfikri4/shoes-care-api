@@ -3,13 +3,14 @@ import { MESSAGE_CODE } from "../../utils/error-code";
 import { ErrorApp } from "../../utils/http-error";
 import { Meta } from "../../utils/Meta";
 import * as userRepository from "../users/users.repository";
-import { PromoCheckResponse } from "./promos.dto";
+import { PromoCheckResponse, PromoConfigurationUpsertDTO } from "./promos.dto";
 import { PromosQueryParams } from "./promos.interface";
 import {
   checkPromoForUserRepo,
   getPromoByCodeRepo,
   getPromos,
   getPromosCount,
+  upsertPromoConfigurationRepo,
 } from "./promos.repository";
 
 export const verifyPromoService = async (email: string, code: string) => {
@@ -86,4 +87,22 @@ export const checkPromoByCodeService = async (
     code: promo.code,
     discountPercent: promo.discountPercent ?? 100,
   };
+};
+
+export const upsertPromoConfigurationService = async (
+  id: string | undefined,
+  payload: PromoConfigurationUpsertDTO
+) => {
+  const raw = payload.requiredTransactions;
+  const requiredTransactions = Number(raw);
+  if (!Number.isFinite(requiredTransactions) || requiredTransactions <= 0) {
+    return new ErrorApp(
+      "requiredTransactions harus berupa angka > 0",
+      400,
+      MESSAGE_CODE.BAD_REQUEST
+    );
+  }
+
+  const config = await upsertPromoConfigurationRepo(id, requiredTransactions);
+  return config;
 };

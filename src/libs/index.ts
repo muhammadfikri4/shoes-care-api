@@ -5,7 +5,7 @@ const env = process.env;
 
 export const config = {
   PORT: Number(env.PORT ?? 3001),
-  JWT_SECRET: JSON.stringify(env.JWT_SECRET ?? ""),
+  JWT_SECRET: env.JWT_SECRET ?? "",
   JWT_EXPIRES: env.JWT_EXPIRES,
   CODE: env.CODE,
   SUPERADMIN_EMAIL: env.SUPERADMIN_EMAIL,
@@ -49,4 +49,5 @@ export const config = {
     SECRET_KEY: env.AWS_STORAGE_SECRET_KEY ?? "",
     BUCKET_FOLDER: env.AWS_STORAGE_BUCKET_FOLDER ?? "",
   },
+  PROMO_CONFIG_SECRET_KEY: env.PROMO_CONFIG_SECRET_KEY,
 };

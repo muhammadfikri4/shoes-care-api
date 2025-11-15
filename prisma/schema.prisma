@@ -171,3 +171,12 @@ model Promo {
 
   @@map("promos")
 }
+
+model PromoConfiguration {
+  id                   String   @id @default(uuid()) @db.Char(36)
+  requiredTransactions Int      @default(10) @map("required_transactions")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("promo_configurations")
+}
