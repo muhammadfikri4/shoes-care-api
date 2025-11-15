@@ -64,3 +64,16 @@ CREATE INDEX IF NOT EXISTS "transactions_promo_id_idx" ON "transactions"("promo_
 -- - This enables better reporting and analytics on promo usage
 -- - The promoApplied boolean flag indicates if any promo was applied
 -- - Foreign key is set to SET NULL on delete to preserve transaction history even if promo is deleted
+
+-- Part 4: Add QR Code URL field to Transaction model
+-- ============================================================
+
+-- Step 10: Add qr_code_url column to transactions table (nullable)
+ALTER TABLE "transactions" ADD COLUMN IF NOT EXISTS "qr_code_url" VARCHAR(512);
+
+-- Notes on QR Code URL:
+-- - qr_code_url stores the public URL of the QR code image uploaded to storage bucket
+-- - QR code is generated on transaction creation and uploaded to S3/storage bucket
+-- - Path format: transactions/qr-codes/{transaction_code}.png
+-- - Email templates use this URL to display QR code image
+-- - This approach is more efficient than embedding base64 in emails

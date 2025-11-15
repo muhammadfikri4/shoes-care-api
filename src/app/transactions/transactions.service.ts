@@ -2,10 +2,11 @@ import {
   PaymentMethod,
   TransactionStatus,
 } from "@prisma/client";
+import QRCode from "qrcode";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { ErrorApp } from "../../utils/http-error";
 import { Meta } from "../../utils/Meta";
-import { GetPublicURL } from "../../utils/upload-file-to-storage";
+import { GetPublicURL, UploadFileToStorage } from "../../utils/upload-file-to-storage";
 // repositories and helpers are used in utils
 import { verifyPromoService } from "../promos/promos.service";
 import {
@@ -31,6 +32,7 @@ import {
 
 import { config } from "../../libs";
 import {
+  SendCompletedEmail,
   SendPromoCodeEmail,
   SendReadyToPickupEmail,
   SendTransactionNotificationEmail,
@@ -154,6 +156,37 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
   // 6) Prepare invoice (use code) + QR data (must match scanner parser: qr-{code})
   const qrData = `qr-${code}`;
 
+  // 7) Generate QR code and upload to storage bucket
+  let qrCodeUrl: string | undefined;
+  try {
+    // Generate QR code as PNG buffer
+    const qrBuffer = await QRCode.toBuffer(qrData, {
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: "H",
+      type: "png",
+    });
+
+    // Upload to storage bucket
+    const qrFileName = `${code}.png`;
+    const qrPath = `transactions/qr-codes/${qrFileName}`;
+    const qrKey = `${config.STORAGE.BUCKET_FOLDER}/${qrPath}`;
+
+    await UploadFileToStorage({
+      Bucket: config.STORAGE.BUCKET,
+      Key: qrKey,
+      Body: qrBuffer,
+      ContentType: "image/png",
+      ACL: "public-read",
+    });
+
+    // Get public URL
+    qrCodeUrl = GetPublicURL(qrPath);
+  } catch (error) {
+    console.error("Failed to generate/upload QR code:", error);
+    // Continue without QR URL - transaction can still be created
+  }
+
   let midtransToken: string | undefined;
   let midtransRedirectUrl: string | undefined;
   const payment: PaymentPayload = {
@@ -202,6 +235,7 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     promoApplied,
     code,
     qrCodeData: qrData,
+    qrCodeUrl,
     customerName: name,
     customerEmail: email,
     customerPhone: phone,
@@ -258,6 +292,21 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     }
   }
 
+  // 9.5) Increment promo eligibility for CASH payment (status IN_PROGRESS)
+  if (customerUserId && data.paymentMethod === PaymentMethod.CASH && created.status === TransactionStatus.IN_PROGRESS) {
+    try {
+      const customer = await userRepository.getUserById(customerUserId);
+      if (customer) {
+        const newCount = (customer.promoEligibilityCount || 0) + 1;
+        await userRepository.updateUserPromoTracking(customerUserId, {
+          promoEligibilityCount: newCount,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to increment promo eligibility:", e);
+    }
+  }
+
   // 10) Send transaction notification email with QR code and tracking button
   try {
     if (email) {
@@ -270,6 +319,7 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
         name,
         code,
         qrData,
+        qrCodeUrl,
         trackingUrl,
         amount: finalPrice,
         paymentMethod: data.paymentMethod,
@@ -380,6 +430,24 @@ export const lookupTransaction = async (params: {
       MESSAGE_CODE.NOT_FOUND
     );
   const safeUserId = trx.customerUserId ?? "guest";
+
+  // Resolve QR code URL with fallback
+  let qrCodeUrl: string | undefined;
+  if (trx.qrCodeUrl) {
+    qrCodeUrl = trx.qrCodeUrl;
+  } else if (trx.qrCodeData) {
+    try {
+      qrCodeUrl = await QRCode.toDataURL(trx.qrCodeData, {
+        width: 256,
+        margin: 1,
+        errorCorrectionLevel: "M",
+        type: "image/png",
+      });
+    } catch (error) {
+      console.error("Failed to generate fallback QR code:", error);
+    }
+  }
+
   return {
     id: trx.id,
     invoice: trx.code,
@@ -389,6 +457,7 @@ export const lookupTransaction = async (params: {
     promoApplied: trx.promoApplied,
     customerName: trx.customerName,
     customerEmail: trx.customerEmail,
+    qrCodeUrl,
     createdAt: trx.createdAt,
     updatedAt: trx.updatedAt,
     items:
@@ -419,7 +488,7 @@ export const getDetailTransaction = async (transactionId: string) => {
       MESSAGE_CODE.NOT_FOUND
     );
   const safeUserId = trx.customerUserId ?? "guest";
-  return getDetailTransactionDTOMapper(safeUserId, trx);
+  return await getDetailTransactionDTOMapper(safeUserId, trx);
 };
 
 export const verifyPromo = async (data: VerifyPromoDTO) =>
@@ -451,6 +520,7 @@ export const markReadyToPickup = async (data: TransactionIdDTO) => {
         name: trx.customerName || undefined,
         code: trx.code,
         qrData: trx.qrCodeData,
+        qrCodeUrl: trx.qrCodeUrl || undefined,
         trackingUrl,
       });
     }
@@ -479,15 +549,24 @@ export const markCompleted = async (data: TransactionIdDTO) => {
     previousStatus: trx.status,
   });
 
-  // Increment promo eligibility counter for customer
-  if (trx.customerUserId) {
-    const customer = await userRepository.getUserById(trx.customerUserId);
-    if (customer) {
-      const newCount = (customer.promoEligibilityCount || 0) + 1;
-      await userRepository.updateUserPromoTracking(trx.customerUserId, {
-        promoEligibilityCount: newCount,
+  // Send completion email
+  try {
+    if (trx.customerEmail) {
+      const trackingBase = config.CLIENT_URL;
+      const trackingUrl = trackingBase
+        ? `${trackingBase}/my/transactions/${trx.id}`
+        : undefined;
+      await SendCompletedEmail({
+        to: trx.customerEmail,
+        name: trx.customerName || undefined,
+        code: trx.code,
+        qrData: trx.qrCodeData,
+        qrCodeUrl: trx.qrCodeUrl || undefined,
+        trackingUrl,
       });
     }
+  } catch (e) {
+    console.warn("Failed to send completion email:", e);
   }
 
   return { ok: true };

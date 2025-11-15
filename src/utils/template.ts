@@ -148,7 +148,7 @@ export const buildInvoiceHtml = (opts: {
                         <div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-align:left">QR Pickup</div>
                         ${
                           qrCid
-                            ? `<img src="cid:${qrCid}" alt="QR Pickup" style="width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;display:block">`
+                            ? `<img src="${qrCid}" alt="QR Pickup" style="width:200px;height:200px;border:1px solid #e5e7eb;border-radius:8px;display:block">`
                             : `<div style="padding:20px;border:1px dashed #cbd5e1;border-radius:8px;font-size:12px;color:#64748b">QR tidak tersedia</div>`
                         }
                       </td>

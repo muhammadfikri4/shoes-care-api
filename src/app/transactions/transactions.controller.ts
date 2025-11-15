@@ -54,7 +54,7 @@ export const createTransactionController = async (
     return;
   }
   console.log({ combine });
-  const result = await transactionService.createTransaction(combine);
+  const result = await transactionService.createTransaction(combine, req.userId);
 
   if (result instanceof ErrorApp) {
     next(result);
@@ -174,8 +174,9 @@ export const verifyPromoController = async (
 export const midtransNotifyController = async (req: Request, res: Response) => {
   try {
     const { order_id, transaction_status } = req.body || {};
-    if (!order_id)
-      return res.status(400).json({ message: "order_id is required" });
+    if (!order_id) {
+      return HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "OK");
+    }
 
     let status: TransactionStatus = TransactionStatus.CREATED;
     let paidAt: Date | undefined;
@@ -198,19 +199,39 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
 
     if (status === TransactionStatus.IN_PROGRESS) {
       const trx = await getTransactionByInvoiceRepo(order_id);
-      if (trx?.customerEmail) {
-        const trackingBase = config.CLIENT_URL;
-        const trackingUrl = trackingBase
-          ? `${trackingBase}/my/transactions/${trx.id}`
-          : undefined;
-        await SendPaymentSuccessEmail({
-          to: trx.customerEmail,
-          name: trx.customerName || undefined,
-          code: trx.code,
-          qrData: trx.qrCodeData,
-          trackingUrl,
-          amount: trx.finalPrice ?? trx.price,
-        });
+      if (trx) {
+        // Increment promo eligibility counter for QRIS/TRANSFER payment
+        if (trx.customerUserId) {
+          try {
+            const userRepository = await import("../users/users.repository");
+            const customer = await userRepository.getUserById(trx.customerUserId);
+            if (customer) {
+              const newCount = (customer.promoEligibilityCount || 0) + 1;
+              await userRepository.updateUserPromoTracking(trx.customerUserId, {
+                promoEligibilityCount: newCount,
+              });
+            }
+          } catch (e) {
+            console.warn("Failed to increment promo eligibility:", e);
+          }
+        }
+
+        // Send payment success email
+        if (trx.customerEmail) {
+          const trackingBase = config.CLIENT_URL;
+          const trackingUrl = trackingBase
+            ? `${trackingBase}/my/transactions/${trx.id}`
+            : undefined;
+          await SendPaymentSuccessEmail({
+            to: trx.customerEmail,
+            name: trx.customerName || undefined,
+            code: trx.code,
+            qrData: trx.qrCodeData,
+            qrCodeUrl: trx.qrCodeUrl || undefined,
+            trackingUrl,
+            amount: trx.finalPrice ?? trx.price,
+          });
+        }
       }
     }
     return res.json({ ok: true });

@@ -73,6 +73,7 @@ export const createTransactionAtomicRepo = async (
         promoApplied: payload.promoApplied,
         promoId: payload.promoIdToUse,
         qrCodeData: payload.qrCodeData,
+        qrCodeUrl: payload.qrCodeUrl,
         customerName: payload.customerName,
         customerEmail: payload.customerEmail,
         customerPhone: payload.customerPhone,
@@ -237,7 +238,13 @@ const buildTransactionWhere = (
     if (typeof maxPrice === "number") where.price.lte = maxPrice;
   }
   if (search && search.trim()) {
-    where.code = { contains: search.trim(), mode: "insensitive" };
+    const term = search.trim();
+    where.OR = [
+      { code: { contains: term, mode: "insensitive" } },
+      { customerName: { contains: term, mode: "insensitive" } },
+      { customerEmail: { contains: term, mode: "insensitive" } },
+      { customerPhone: { contains: term, mode: "insensitive" } },
+    ];
   }
   console.log({ where });
   return where;

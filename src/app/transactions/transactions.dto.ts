@@ -145,6 +145,7 @@ export interface TransactionCreationDTO {
   promoApplied: boolean;
   code: string;
   qrCodeData: string;
+  qrCodeUrl?: string;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;

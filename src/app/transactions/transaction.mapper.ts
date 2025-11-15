@@ -1,10 +1,43 @@
+import QRCode from "qrcode";
 import { GetPublicURL } from "../../utils/upload-file-to-storage";
 import { TransactionData } from "./transaction.interface";
 
-export const getDetailTransactionDTOMapper = (
+/**
+ * Resolve QR code URL with fallback logic
+ * - If qrCodeUrl from bucket is available, use it
+ * - Otherwise, generate QR code from qrData as data URI
+ */
+const resolveQrCodeUrl = async (
+  qrCodeUrl: string | null | undefined,
+  qrData: string
+): Promise<string | undefined> => {
+  // If bucket URL is available, use it
+  if (qrCodeUrl) {
+    return qrCodeUrl;
+  }
+
+  // Fallback: generate QR code from qrData as data URI (blob URL)
+  try {
+    const dataUri = await QRCode.toDataURL(qrData, {
+      width: 256,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      type: "image/png",
+    });
+    return dataUri;
+  } catch (error) {
+    console.error("Failed to generate fallback QR code:", error);
+    return undefined;
+  }
+};
+
+export const getDetailTransactionDTOMapper = async (
   userId: string,
   data: TransactionData
 ) => {
+  // Resolve QR code URL with fallback
+  const qrCodeUrl = await resolveQrCodeUrl(data.qrCodeUrl, data.qrCodeData);
+
   return {
     id: data.id,
     code: data.code,
@@ -13,6 +46,7 @@ export const getDetailTransactionDTOMapper = (
     finalPrice: data.finalPrice,
     promoApplied: data.promoApplied,
     paymentMethod: data.paymentMethod,
+    qrCodeUrl,
     createdAt: data.createdAt,
     customer: {
       name: data.customerName,

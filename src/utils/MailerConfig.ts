@@ -1,6 +1,6 @@
 import * as brevo from "@getbrevo/brevo";
-import { config } from "../libs";
 import QRCode from "qrcode";
+import { config } from "../libs";
 import {
   buildInvoiceHtml,
   buildPromoHtml,
@@ -14,6 +14,35 @@ apiInstance.setApiKey(
   brevo.TransactionalEmailsApiApiKeys.apiKey,
   config.EMAIL.API_KEY ?? ""
 );
+
+/**
+ * Centralized QR code image resolver with fallback logic
+ * - If qrCodeUrl is available, use it
+ * - Otherwise, generate QR code from qrData as data URI
+ */
+const resolveQrCodeImage = async (
+  qrCodeUrl: string | undefined,
+  qrData: string
+): Promise<string | undefined> => {
+  // If bucket URL is available, use it
+  if (qrCodeUrl) {
+    return qrCodeUrl;
+  }
+
+  // Fallback: generate QR code from qrData
+  try {
+    const dataUri = await QRCode.toDataURL(qrData, {
+      width: 256,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      type: "image/png",
+    });
+    return dataUri;
+  } catch (error) {
+    console.error("Failed to generate fallback QR code:", error);
+    return undefined;
+  }
+};
 
 export const SendEmail = async (to: string, name: string, otp: number) => {
   const sendSmtpEmail = new brevo.SendSmtpEmail();
@@ -52,6 +81,7 @@ export const SendTransactionNotificationEmail = async (payload: {
   name?: string;
   code: string;
   qrData: string;
+  qrCodeUrl?: string;
   trackingUrl?: string;
   amount?: number;
   paymentMethod?: string;
@@ -62,18 +92,15 @@ export const SendTransactionNotificationEmail = async (payload: {
     name,
     code,
     qrData,
+    qrCodeUrl,
     trackingUrl,
     amount,
     paymentMethod,
     midtransUrl,
   } = payload;
 
-  const qrPng: Buffer | undefined = await QRCode.toBuffer(qrData, {
-    width: 256,
-    margin: 1,
-    errorCorrectionLevel: "M",
-    type: "png",
-  });
+  // Use centralized QR code resolver
+  const qrImageSrc = await resolveQrCodeImage(qrCodeUrl, qrData);
 
   const html = buildInvoiceHtml({
     title: "Invoice Transaksi",
@@ -86,7 +113,7 @@ export const SendTransactionNotificationEmail = async (payload: {
     trackingUrl,
     actionUrl: midtransUrl,
     actionLabel: "Bayar via Midtrans",
-    qrCid: qrPng ? "qr-pickup" : undefined,
+    qrCid: qrImageSrc,
   });
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
@@ -98,15 +125,6 @@ export const SendTransactionNotificationEmail = async (payload: {
   sendSmtpEmail.subject = `Invoice ${code} dibuat`;
   sendSmtpEmail.htmlContent = html;
 
-  if (qrPng) {
-    sendSmtpEmail.attachment = [
-      {
-        name: "qr.png",
-        content: qrPng.toString("base64"),
-      },
-    ];
-  }
-
   return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
@@ -115,16 +133,15 @@ export const SendPaymentSuccessEmail = async (payload: {
   name?: string;
   code: string;
   qrData: string;
+  qrCodeUrl?: string;
   trackingUrl?: string;
   amount?: number;
 }) => {
-  const { to, name, code, qrData, trackingUrl, amount } = payload;
-  const qrPng: Buffer | undefined = await QRCode.toBuffer(qrData, {
-    width: 256,
-    margin: 1,
-    errorCorrectionLevel: "M",
-    type: "png",
-  });
+  const { to, name, code, qrData, qrCodeUrl, trackingUrl, amount } = payload;
+
+  // Use centralized QR code resolver
+  const qrImageSrc = await resolveQrCodeImage(qrCodeUrl, qrData);
+
   const html = buildInvoiceHtml({
     title: "Pembayaran Berhasil",
     subtitle: "Terima kasih, pembayaran Anda sudah kami terima",
@@ -132,7 +149,7 @@ export const SendPaymentSuccessEmail = async (payload: {
     name,
     amount,
     trackingUrl,
-    qrCid: qrPng ? "qr-pickup" : undefined,
+    qrCid: qrImageSrc,
   });
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
@@ -144,15 +161,6 @@ export const SendPaymentSuccessEmail = async (payload: {
   sendSmtpEmail.subject = `Pembayaran invoice ${code} diterima`;
   sendSmtpEmail.htmlContent = html;
 
-  if (qrPng) {
-    sendSmtpEmail.attachment = [
-      {
-        name: "qr.png",
-        content: qrPng.toString("base64"),
-      },
-    ];
-  }
-
   return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
@@ -161,22 +169,21 @@ export const SendReadyToPickupEmail = async (payload: {
   name?: string;
   code: string;
   qrData: string;
+  qrCodeUrl?: string;
   trackingUrl?: string;
 }) => {
-  const { to, name, code, qrData, trackingUrl } = payload;
-  const qrPng: Buffer | undefined = await QRCode.toBuffer(qrData, {
-    width: 256,
-    margin: 1,
-    errorCorrectionLevel: "M",
-    type: "png",
-  });
+  const { to, name, code, qrData, qrCodeUrl, trackingUrl } = payload;
+
+  // Use centralized QR code resolver
+  const qrImageSrc = await resolveQrCodeImage(qrCodeUrl, qrData);
+
   const html = buildInvoiceHtml({
     title: "Siap Diambil",
     subtitle: "Sepatu Anda siap untuk diambil di outlet",
     code,
     name,
     trackingUrl,
-    qrCid: qrPng ? "qr-pickup" : undefined,
+    qrCid: qrImageSrc,
   });
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
@@ -188,14 +195,39 @@ export const SendReadyToPickupEmail = async (payload: {
   sendSmtpEmail.subject = `Pesanan ${code} siap diambil`;
   sendSmtpEmail.htmlContent = html;
 
-  if (qrPng) {
-    sendSmtpEmail.attachment = [
-      {
-        name: "qr.png",
-        content: qrPng.toString("base64"),
-      },
-    ];
-  }
+  return await apiInstance.sendTransacEmail(sendSmtpEmail);
+};
+
+export const SendCompletedEmail = async (payload: {
+  to: string;
+  name?: string;
+  code: string;
+  qrData: string;
+  qrCodeUrl?: string;
+  trackingUrl?: string;
+}) => {
+  const { to, name, code, qrData, qrCodeUrl, trackingUrl } = payload;
+
+  // Use centralized QR code resolver
+  const qrImageSrc = await resolveQrCodeImage(qrCodeUrl, qrData);
+
+  const html = buildInvoiceHtml({
+    title: "Pesanan Selesai",
+    subtitle: "Terima kasih telah menggunakan layanan kami",
+    code,
+    name,
+    trackingUrl,
+    qrCid: qrImageSrc,
+  });
+
+  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.sender = {
+    name: config.EMAIL.NAME_SENDER,
+    email: config.EMAIL.EMAIL_SENDER ?? "",
+  };
+  sendSmtpEmail.to = [{ email: to, name }];
+  sendSmtpEmail.subject = `Pesanan ${code} telah selesai`;
+  sendSmtpEmail.htmlContent = html;
 
   return await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
