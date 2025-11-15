@@ -126,6 +126,14 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
         MESSAGE_CODE.BAD_REQUEST
       );
     }
+    // Check if promo has already been used
+    if (promo.isUsed) {
+      return new ErrorApp(
+        "Kode promo sudah pernah digunakan",
+        400,
+        MESSAGE_CODE.BAD_REQUEST
+      );
+    }
     promoApplied = true;
     promoIdToUse = promo.id;
     discountPercent = promo.discountPercent ?? 100;
@@ -294,8 +302,8 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     }
   }
 
-  // 9.5) Increment promo eligibility for CASH payment (status IN_PROGRESS)
-  if (customerUserId && data.paymentMethod === PaymentMethod.CASH && created.status === TransactionStatus.IN_PROGRESS) {
+  // 9.5) Increment promo eligibility for CASH payment (status IN_PROGRESS) - only when no promo is used
+  if (customerUserId && data.paymentMethod === PaymentMethod.CASH && created.status === TransactionStatus.IN_PROGRESS && !promoApplied) {
     try {
       const customer = await userRepository.getUserById(customerUserId);
       if (customer) {

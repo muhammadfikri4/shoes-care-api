@@ -1,3 +1,4 @@
+import * as userRepository from "../users/users.repository";
 import { NextFunction, Request, Response } from "express";
 import { RequestWithAccessToken } from "../../interface/Request";
 import { MESSAGE_CODE } from "../../utils/error-code";
@@ -203,10 +204,10 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
     if (status === TransactionStatus.IN_PROGRESS) {
       const trx = await getTransactionByInvoiceRepo(order_id);
       if (trx) {
-        // Increment promo eligibility counter for QRIS/TRANSFER payment
-        if (trx.customerUserId) {
+        // Increment promo eligibility counter for QRIS/TRANSFER payment - only when no promo is used
+        if (trx.customerUserId && !trx.promoApplied) {
           try {
-            const userRepository = await import("../users/users.repository");
+
             const customer = await userRepository.getUserById(
               trx.customerUserId
             );
@@ -225,7 +226,7 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
         if (trx.customerEmail) {
           const trackingBase = config.CLIENT_URL;
           const trackingUrl = trackingBase
-            ? `${trackingBase}/my/transactions/${trx.id}`
+            ? `${trackingBase}/transaction/portal/${trx.id}`
             : undefined;
           await SendPaymentSuccessEmail({
             to: trx.customerEmail,
