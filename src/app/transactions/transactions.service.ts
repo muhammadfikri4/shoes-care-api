@@ -1,12 +1,12 @@
-import {
-  PaymentMethod,
-  TransactionStatus,
-} from "@prisma/client";
+import { PaymentMethod, TransactionStatus } from "@prisma/client";
 import QRCode from "qrcode";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { ErrorApp } from "../../utils/http-error";
 import { Meta } from "../../utils/Meta";
-import { GetPublicURL, UploadFileToStorage } from "../../utils/upload-file-to-storage";
+import {
+  GetPublicURL,
+  UploadFileToStorage,
+} from "../../utils/upload-file-to-storage";
 // repositories and helpers are used in utils
 import { verifyPromoService } from "../promos/promos.service";
 import {
@@ -60,7 +60,7 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
 
     if (existingUser) {
       // Jika user adalah ADMIN atau SUPERADMIN, return error
-      if (existingUser.role === 'ADMIN' || existingUser.role === 'SUPERADMIN') {
+      if (existingUser.role === "ADMIN" || existingUser.role === "SUPERADMIN") {
         throw new ErrorApp(
           "Email ini terdaftar sebagai admin. Gunakan email lain untuk customer.",
           400,
@@ -79,7 +79,10 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
   return { customerUserId, name, email, phone };
 };
 
-export const createTransaction = async (data: CreateTransactionDTO, createdByUserId?: string) => {
+export const createTransaction = async (
+  data: CreateTransactionDTO,
+  createdByUserId?: string
+) => {
   const { customerUserId, email, name, phone } = await ensureCustomer(data);
   const code = generateCode();
 
@@ -228,7 +231,8 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     const snap = await createMidtransTransaction(midtransPayload);
     if (snap instanceof ErrorApp) return snap;
     if (snap?.data?.token) midtransToken = snap?.data?.token;
-    if (snap?.data?.redirect_url) midtransRedirectUrl = snap?.data?.redirect_url;
+    if (snap?.data?.redirect_url)
+      midtransRedirectUrl = snap?.data?.redirect_url;
   } else if (data.paymentMethod === PaymentMethod.CASH) {
     payment.paidAt = new Date();
     payment.cashPaid = data.cashPaid ?? 0;
@@ -256,6 +260,26 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
     midtransToken,
     midtransRedirectUrl,
   });
+
+  // 9.5) Increment promo eligibility for CASH payment (status IN_PROGRESS) - only when no promo is used
+  if (
+    customerUserId &&
+    data.paymentMethod === PaymentMethod.CASH &&
+    created.status === TransactionStatus.IN_PROGRESS &&
+    !promoApplied
+  ) {
+    try {
+      const customer = await userRepository.getUserById(customerUserId);
+      if (customer) {
+        const newCount = (customer.promoEligibilityCount || 0) + 1;
+        await userRepository.updateUserPromoTracking(customerUserId, {
+          promoEligibilityCount: newCount,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to increment promo eligibility:", e);
+    }
+  }
 
   // 9) Check promo eligibility and issue promo if eligible
   if (customerUserId) {
@@ -299,21 +323,6 @@ export const createTransaction = async (data: CreateTransactionDTO, createdByUse
       } catch (e) {
         console.warn("Failed to issue promo:", e);
       }
-    }
-  }
-
-  // 9.5) Increment promo eligibility for CASH payment (status IN_PROGRESS) - only when no promo is used
-  if (customerUserId && data.paymentMethod === PaymentMethod.CASH && created.status === TransactionStatus.IN_PROGRESS && !promoApplied) {
-    try {
-      const customer = await userRepository.getUserById(customerUserId);
-      if (customer) {
-        const newCount = (customer.promoEligibilityCount || 0) + 1;
-        await userRepository.updateUserPromoTracking(customerUserId, {
-          promoEligibilityCount: newCount,
-        });
-      }
-    } catch (e) {
-      console.warn("Failed to increment promo eligibility:", e);
     }
   }
 
