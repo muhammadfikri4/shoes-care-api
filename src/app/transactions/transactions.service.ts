@@ -44,9 +44,103 @@ import { getDetailTransactionDTOMapper } from "./transaction.mapper";
 import { TransactionIdDTO } from "./transactions.dto";
 import { uploadItemFiles } from "./transactions.utils";
 
-// No direct prisma usage in service; repository handles DB
-
 const generateCode = () => `TRX-${+new Date()}`;
+
+export const checkAndIssuePromoIfEligible = async (
+  customerUserId: string,
+  email: string,
+  name?: string
+) => {
+  try {
+    const customer = await userRepository.getUserById(customerUserId);
+    if (!customer) {
+      console.log("[Promo] Customer not found:", customerUserId);
+      return;
+    }
+
+    // Get threshold from promo configuration (default 10 if not exists)
+    const threshold = await promoRepository.getPromoThresholdRepo();
+    console.log(
+      `[Promo] Check eligibility - Count: ${customer.promoEligibilityCount}, Threshold: ${threshold}`
+    );
+
+    // Check if customer is eligible for promo
+    if (customer.promoEligibilityCount >= threshold) {
+      console.log("[Promo] Customer is eligible! Issuing promo...");
+
+      // Generate unique promo code
+      const genCode = () =>
+        `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+      let c = genCode();
+      for (let i = 0; i < 2; i++) {
+        const exists = await promoRepository.getPromoByCodeRepo(c);
+        if (!exists) break;
+        c = genCode();
+      }
+
+      // Issue new promo
+      const newPromo = await promoRepository.createPromoRepo({
+        userId: customerUserId,
+        code: c,
+        discountPercent: 100,
+      });
+      console.log("[Promo] Promo created:", newPromo.code);
+
+      // Update user: reset counter and increment total promos
+      await userRepository.updateUserPromoTracking(customerUserId, {
+        promoEligibilityCount: 0,
+        totalPromosReceived: (customer.totalPromosReceived || 0) + 1,
+      });
+      console.log("[Promo] User tracking updated - Counter reset to 0");
+
+      // Send promo email (separate try-catch to not fail the whole process)
+      if (email) {
+        console.log("[Promo] Sending email to:", email);
+        try {
+          const actionUrl = config.CLIENT_URL || undefined;
+          const send = await SendPromoCodeEmail(
+            email,
+            name || "",
+            newPromo.code,
+            newPromo.discountPercent ?? 100,
+            actionUrl
+          );
+
+          // Log detailed response
+          console.log("[Promo] Brevo Response Status:", send?.response?.statusCode);
+          console.log("[Promo] Brevo Message ID:", send?.body?.messageId);
+          console.log("[Promo] Full Response Body:", JSON.stringify(send?.body));
+
+          // Log email details for debugging
+          console.log("[Promo] Email Details:", {
+            to: email,
+            name: name || "",
+            subject: `Selamat! Anda Mendapat Promo ${newPromo.discountPercent ?? 100}%`,
+            code: newPromo.code,
+            discount: newPromo.discountPercent ?? 100,
+            actionUrl: actionUrl || "none",
+          });
+
+          console.log("[Promo] Email sent successfully to:", email);
+        } catch (emailError) {
+          console.error("[Promo] Failed to send email:", emailError);
+          console.error("[Promo] Email details:", {
+            to: email,
+            name,
+            code: newPromo.code,
+            discount: newPromo.discountPercent,
+          });
+        }
+      } else {
+        console.warn("[Promo] No email provided, skipping email sending");
+      }
+    } else {
+      console.log("[Promo] Not eligible yet");
+    }
+  } catch (e) {
+    console.error("[Promo] Failed to check/issue promo:", e);
+  }
+};
 
 export const ensureCustomer = async (data: CreateTransactionDTO) => {
   const email = data.customerEmail?.trim();
@@ -55,11 +149,11 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
   const phone = data.customerPhone?.trim();
 
   if (email) {
-    // Cek apakah email sudah terdaftar sebagai user
+    // if user email exist
     const existingUser = await userRepository.getUserByEmail(email);
 
     if (existingUser) {
-      // Jika user adalah ADMIN atau SUPERADMIN, return error
+      // error if admin user
       if (existingUser.role === "ADMIN" || existingUser.role === "SUPERADMIN") {
         throw new ErrorApp(
           "Email ini terdaftar sebagai admin. Gunakan email lain untuk customer.",
@@ -67,15 +161,15 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
           MESSAGE_CODE.BAD_REQUEST
         );
       }
-      // Jika user sudah ada sebagai CUSTOMER, gunakan ID-nya
+      // User existing user customer
       customerUserId = existingUser.id;
     } else {
-      // Jika belum ada, buat user baru dengan role CUSTOMER
+      // create if not exist
       const user = await userRepository.upsertCustomerByEmail(email, name);
       customerUserId = user.id;
     }
   }
-
+  console.log("Ensure Customer Email =>", email);
   return { customerUserId, name, email, phone };
 };
 
@@ -261,7 +355,8 @@ export const createTransaction = async (
     midtransRedirectUrl,
   });
 
-  // 9.5) Increment promo eligibility for CASH payment (status IN_PROGRESS) - only when no promo is used
+  // 9) Increment promo eligibility for CASH payment (status IN_PROGRESS) - only when no promo is used
+  // Then check eligibility and issue promo if threshold is met
   if (
     customerUserId &&
     data.paymentMethod === PaymentMethod.CASH &&
@@ -275,54 +370,12 @@ export const createTransaction = async (
         await userRepository.updateUserPromoTracking(customerUserId, {
           promoEligibilityCount: newCount,
         });
+
+        // After incrementing, check if customer is now eligible for promo
+        await checkAndIssuePromoIfEligible(customerUserId, email, name);
       }
     } catch (e) {
       console.warn("Failed to increment promo eligibility:", e);
-    }
-  }
-
-  // 9) Check promo eligibility and issue promo if eligible
-  if (customerUserId) {
-    const customer = await userRepository.getUserById(customerUserId);
-    // Ambil threshold dari konfigurasi promo (default 10 jika tidak ada)
-    const threshold = await promoRepository.getPromoThresholdRepo();
-    if (customer && customer.promoEligibilityCount >= threshold) {
-      // Generate unique promo code
-      const genCode = () =>
-        `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-      let c = genCode();
-      for (let i = 0; i < 2; i++) {
-        const exists = await promoRepository.getPromoByCodeRepo(c);
-        if (!exists) break;
-        c = genCode();
-      }
-
-      try {
-        // Issue new promo
-        const newPromo = await promoRepository.createPromoRepo({
-          userId: customerUserId,
-          code: c,
-          discountPercent: 100,
-        });
-
-        // Update user: reset counter and increment total promos
-        await userRepository.updateUserPromoTracking(customerUserId, {
-          promoEligibilityCount: 0,
-          totalPromosReceived: (customer.totalPromosReceived || 0) + 1,
-        });
-
-        // Send promo email
-        if (email) {
-          await SendPromoCodeEmail(
-            email,
-            name || "",
-            newPromo.code,
-            newPromo.discountPercent ?? 100
-          );
-        }
-      } catch (e) {
-        console.warn("Failed to issue promo:", e);
-      }
     }
   }
 

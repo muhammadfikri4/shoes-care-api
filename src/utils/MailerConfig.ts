@@ -61,16 +61,17 @@ export const SendPromoCodeEmail = async (
   to: string,
   name: string,
   code: string,
-  discountPercent = 100
+  discountPercent = 100,
+  actionUrl?: string
 ) => {
-  const html = buildPromoHtml({ name, code, discountPercent });
+  const html = buildPromoHtml({ name, code, discountPercent, actionUrl });
   const sendSmtpEmail = new brevo.SendSmtpEmail();
   sendSmtpEmail.sender = {
     name: config.EMAIL.NAME_SENDER,
     email: config.EMAIL.EMAIL_SENDER ?? "",
   };
   sendSmtpEmail.to = [{ email: to, name }];
-  sendSmtpEmail.subject = `Kode Promo Anda: ${code}`;
+  sendSmtpEmail.subject = `Promo ${discountPercent}% - ${code}`;
   sendSmtpEmail.htmlContent = html;
 
   return await apiInstance.sendTransacEmail(sendSmtpEmail);

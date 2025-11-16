@@ -205,9 +205,9 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
       const trx = await getTransactionByInvoiceRepo(order_id);
       if (trx) {
         // Increment promo eligibility counter for QRIS/TRANSFER payment - only when no promo is used
+        // Then check eligibility and issue promo if threshold is met
         if (trx.customerUserId && !trx.promoApplied) {
           try {
-
             const customer = await userRepository.getUserById(
               trx.customerUserId
             );
@@ -216,6 +216,13 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
               await userRepository.updateUserPromoTracking(trx.customerUserId, {
                 promoEligibilityCount: newCount,
               });
+
+              // After incrementing, check if customer is now eligible for promo
+              await transactionService.checkAndIssuePromoIfEligible(
+                trx.customerUserId,
+                trx.customerEmail || undefined || '',
+                trx.customerName || undefined
+              );
             }
           } catch (e) {
             console.warn("Failed to increment promo eligibility:", e);

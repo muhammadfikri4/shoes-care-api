@@ -2,43 +2,127 @@ export const buildPromoHtml = (opts: {
   name?: string;
   code: string;
   discountPercent?: number;
+  actionUrl?: string;
 }) => {
-  const { name, code, discountPercent = 100 } = opts;
+  const { name, code, discountPercent = 100, actionUrl } = opts;
+
   return `<!DOCTYPE html>
-  <html lang="id">
-  <head>
-    <meta charset="utf-8"><meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1"><title>Promo</title>
-    <style>
-      img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic}
-      table{border-collapse:collapse!important}body{margin:0!important;padding:0!important;background:#f6f7fb}
-      a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important}
-      .container{width:600px;max-width:600px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
-      .header{background:#111827;color:#fff;padding:16px 20px}.px{padding-left:20px;padding-right:20px}.ptb{padding-top:20px;padding-bottom:20px}
-      .muted{color:#6b7280}
-      .pill{padding:12px 16px;border:1px dashed #999;border-radius:8px;display:inline-block;margin:8px 0;font-size:16px;letter-spacing:2px}
-      .btn{background:#0ea5e9;color:#fff;padding:12px 16px;border-radius:8px;display:inline-block;font-size:14px}
-      @media (prefers-color-scheme: dark){.bg-body{background:#0b1220!important}.card{background:#0f172a!important;border-color:#1f2937!important;color:#e5e7eb!important}.header{background:#111827!important;color:#fff!important}.muted{color:#9ca3af!important}.btn{color:#fff!important}}
-      @media screen and (max-width:600px){.container{width:100%!important}.px{padding-left:16px!important;padding-right:16px!important}.ptb{padding-top:16px!important;padding-bottom:16px!important}.btn{display:block!important;width:100%!important;text-align:center!important}}
-    </style>
-  </head>
-  <body class="bg-body" style="background:#f6f7fb;margin:0;padding:24px 0;color:#111">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-      <table role="presentation" class="container card" cellpadding="0" cellspacing="0">
-        <tr><td class="header"><div style="font-size:18px;font-weight:700">Promo untuk Anda 🎉</div></td></tr>
-        <tr><td class="px ptb">
-          <p style="margin:0 0 8px 0">Halo ${name || "Customer"},</p>
-          <p class="muted" style="margin:0 0 12px 0">Terima kasih sudah setia menggunakan layanan kami. Berikut adalah kode promo spesial untuk Anda:</p>
-          <div class="pill"><strong>${code}</strong></div>
-          <p style="margin:8px 0 12px 0">Diskon: <strong>${discountPercent}%</strong></p>
-          <p class="muted" style="margin:0 0 16px 0">Masukkan kode ini saat transaksi berikutnya. Syarat dan ketentuan berlaku.</p>
-          <a href="#" class="btn">Belanja Sekarang</a>
-          <p style="margin:16px 0 0 0">Salam hangat,<br/>Shoes Care</p>
-        </td></tr>
-      </table>
-      <div style="max-width:600px;margin:10px auto 0;text-align:center;color:#94a3b8;font-size:12px;padding-bottom:16px">Butuh bantuan? Hubungi support.</div>
-    </td></tr></table>
-  </body></html>`;
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kode Promo Anda</title>
+</head>
+
+<body style="margin:0;padding:24px 0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111827">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td align="center">
+
+        <!-- WRAPPER -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" 
+          border="0" 
+          style="max-width:600px;width:100%;background:#ffffff;
+          border:1px solid #e5e7eb;border-collapse:separate;border-radius:12px">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background:#111827;color:#ffffff;padding:16px 20px;border-radius:12px 12px 0 0">
+              <p style="font-size:18px;font-weight:700;margin:0">Selamat! Anda Mendapat Promo</p>
+              <p style="font-size:12px;color:#9ca3af;margin:4px 0 0 0">Kode promo telah dikirimkan untuk Anda</p>
+            </td>
+          </tr>
+
+          <!-- CONTENT -->
+          <tr>
+            <td style="padding:20px">
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                
+                <!-- CODE -->
+                <tr>
+                  <td style="padding-bottom:16px">
+                    <p style="font-size:12px;color:#6b7280;margin:0">Kode Promo</p>
+                    <p style="font-size:20px;font-weight:700;margin:4px 0">${code}</p>
+                  </td>
+                </tr>
+
+                <!-- CUSTOMER -->
+                <tr>
+                  <td style="padding-bottom:16px">
+                    <p style="font-size:12px;color:#6b7280;margin:0">Customer</p>
+                    <p style="font-size:14px;margin:4px 0">${name || "-"}</p>
+                  </td>
+                </tr>
+
+                <!-- DISCOUNT -->
+                <tr>
+                  <td style="padding-bottom:16px">
+                    <p style="font-size:12px;color:#6b7280;margin:0">Diskon</p>
+                    <p style="font-size:24px;font-weight:700;margin:4px 0">${discountPercent}%</p>
+                  </td>
+                </tr>
+
+                <!-- DESCRIPTION -->
+                <tr>
+                  <td style="padding-bottom:20px">
+                    <p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0">
+                      Terima kasih sudah setia menggunakan layanan kami. 
+                      Gunakan kode promo ini pada transaksi berikutnya untuk mendapatkan 
+                      diskon ${discountPercent}%.
+                    </p>
+                  </td>
+                </tr>
+
+                ${
+                  actionUrl
+                    ? `
+                <!-- CTA BUTTON -->
+                <tr>
+                  <td style="padding-top:12px;padding-bottom:12px">
+                    <a href="${actionUrl}"
+                      style="background:#0ea5e9;color:#ffffff;text-decoration:none;
+                      padding:12px 24px;border-radius:8px;
+                      font-size:14px;font-weight:600;
+                      display:inline-block">
+                      Gunakan Promo Sekarang
+                    </a>
+                  </td>
+                </tr>
+                `
+                    : ""
+                }
+
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="border-top:1px solid #e5e7eb;padding:16px 20px;font-size:12px;color:#6b7280;border-radius:0 0 12px 12px">
+              <p style="margin:0 0 8px 0;color:#059669;font-weight:600">
+                Promo ini dapat digunakan untuk transaksi berikutnya.
+              </p>
+              <p style="margin:0">Terima kasih telah mempercayai layanan kami — Shoes Care</p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- SUPPORT TEXT -->
+        <p style="max-width:600px;margin:16px auto 0;text-align:center;color:#94a3b8;font-size:12px">
+          Butuh bantuan? Hubungi support.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
 };
 
 export const buildInvoiceHtml = (opts: {
