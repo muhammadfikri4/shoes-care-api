@@ -11,12 +11,9 @@ const resolveQrCodeUrl = async (
   qrCodeUrl: string | null | undefined,
   qrData: string
 ): Promise<string | undefined> => {
-  // If bucket URL is available, use it
   if (qrCodeUrl) {
     return qrCodeUrl;
   }
-
-  // Fallback: generate QR code from qrData as data URI (blob URL)
   try {
     const dataUri = await QRCode.toDataURL(qrData, {
       width: 256,
@@ -35,7 +32,6 @@ export const getDetailTransactionDTOMapper = async (
   userId: string,
   data: TransactionData
 ) => {
-  // Resolve QR code URL with fallback
   const qrCodeUrl = await resolveQrCodeUrl(data.qrCodeUrl, data.qrCodeData);
 
   return {
@@ -45,6 +41,7 @@ export const getDetailTransactionDTOMapper = async (
     price: Number(data.price),
     finalPrice: Number(data.finalPrice),
     promoApplied: data.promoApplied,
+    discount: data.promo?.discountPercent || 0,
     paymentMethod: data.paymentMethod,
     qrCodeUrl,
     createdAt: data.createdAt,
@@ -62,6 +59,7 @@ export const getDetailTransactionDTOMapper = async (
         : undefined,
       estimateDay: it.estimateDay,
       rackCode: it?.rack?.code,
+      status: it.status,
     })),
     history:
       (data.TransactionHistory || [])?.map((h) => ({

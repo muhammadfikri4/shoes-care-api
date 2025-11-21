@@ -3,6 +3,7 @@ import {
   Prisma,
   PrismaClient,
   TransactionStatus,
+  TransactionItemStatus,
 } from "@prisma/client";
 import { queryPagination } from "../../utils/Pagination";
 import {
@@ -47,6 +48,20 @@ export const updateTransactionStatusRepo = async (
   status: TransactionStatus
 ) => prisma.transaction.update({ where: { id }, data: { status } });
 
+export const updateTransactionItemStatusRepo = async (
+  id: string,
+  status: TransactionItemStatus
+) => prisma.transactionItem.update({ where: { id }, data: { status } });
+
+export const updateAllTransactionItemsStatusRepo = async (
+  transactionId: string,
+  status: TransactionItemStatus
+) =>
+  prisma.transactionItem.updateMany({
+    where: { transactionId },
+    data: { status },
+  });
+
 export const updateTransactionRepo = async (
   id: string,
   data: Partial<{ status: TransactionStatus }>
@@ -89,6 +104,10 @@ export const createTransactionAtomicRepo = async (
                 ...item,
                 price: Number(item.price),
                 file: item.file as string,
+                status:
+                  payload.paymentMethod === PaymentMethod.CASH
+                    ? TransactionItemStatus.IN_PROGRESS
+                    : TransactionItemStatus.INCOMING,
               })),
             }
           : undefined,
@@ -144,6 +163,10 @@ export const readyToPickupAtomicRepo = async (payload: {
     await tx.transaction.update({
       where: { id: payload.id },
       data: { status: TransactionStatus.READY_TO_PICKUP, readyAt: new Date() },
+    });
+    await tx.transactionItem.updateMany({
+      where: { transactionId: payload.id },
+      data: { status: TransactionItemStatus.COMPLETED },
     });
     await tx.transactionHistory.create({
       data: {
@@ -255,7 +278,12 @@ export const listFilteredTransactionsRepo = async (
 ) => {
   return prisma.transaction.findMany({
     where: buildTransactionWhere(query),
-    include: { customerUser: true, createdByUser: true, items: true, promo: true },
+    include: {
+      customerUser: true,
+      createdByUser: true,
+      items: true,
+      promo: true,
+    },
     orderBy: { createdAt: "desc" },
     ...queryPagination(query),
   });

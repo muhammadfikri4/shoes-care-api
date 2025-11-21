@@ -8,7 +8,7 @@ import {
   getTransactionByInvoiceRepo,
   updateTransactionStatusByInvoiceRepo,
 } from "./transactions.repository";
-import { TransactionStatus } from "@prisma/client";
+import { TransactionStatus, TransactionItemStatus } from "@prisma/client";
 import { CreateTransactionDTO } from "./transactions.dto";
 import { ErrorApp } from "../../utils/http-error";
 import { createTransactionSchema } from "./transactions.request";
@@ -204,8 +204,11 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
     if (status === TransactionStatus.IN_PROGRESS) {
       const trx = await getTransactionByInvoiceRepo(order_id);
       if (trx) {
-        // Increment promo eligibility counter for QRIS/TRANSFER payment - only when no promo is used
-        // Then check eligibility and issue promo if threshold is met
+        await transactionService.updateAllTransactionItemsStatus(
+          trx.id,
+          TransactionItemStatus.IN_PROGRESS
+        );
+
         if (trx.customerUserId && !trx.promoApplied) {
           try {
             const customer = await userRepository.getUserById(
@@ -217,10 +220,9 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
                 promoEligibilityCount: newCount,
               });
 
-              // After incrementing, check if customer is now eligible for promo
               await transactionService.checkAndIssuePromoIfEligible(
                 trx.customerUserId,
-                trx.customerEmail || undefined || '',
+                trx.customerEmail || undefined || "",
                 trx.customerName || undefined
               );
             }
@@ -229,7 +231,6 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
           }
         }
 
-        // Send payment success email
         if (trx.customerEmail) {
           const trackingBase = config.CLIENT_URL;
           const trackingUrl = trackingBase
@@ -291,4 +292,18 @@ export const completeController = async (
   const result = await transactionService.markCompleted(req.body);
   if (result instanceof ErrorApp) return next(result);
   HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Status updated", result);
+};
+
+export const updateTransactionItemStatusController = async (
+  req: RequestWithAccessToken,
+  res: Response,
+  next: NextFunction
+) => {
+  const { transactionItemId } = req.params;
+  const result = await transactionService.updateTransactionItemStatus(
+    transactionItemId,
+    TransactionItemStatus.COMPLETED
+  );
+  if (result instanceof ErrorApp) return next(result);
+  HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Status item updated", result);
 };

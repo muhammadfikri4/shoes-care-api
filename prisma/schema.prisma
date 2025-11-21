@@ -116,6 +116,12 @@ model Transaction {
   @@map("transactions")
 }
 
+enum TransactionItemStatus {
+  INCOMING
+  IN_PROGRESS
+  COMPLETED
+}
+
 model TransactionItem {
   id            String  @id @default(uuid())
   transactionId String  @map("transaction_id") @db.Char(36)
@@ -125,6 +131,7 @@ model TransactionItem {
   file          String  @db.VarChar(128)
   note          String? @db.Text
   rackId        String  @map("rack_id") @db.Char(36)
+  status        TransactionItemStatus @default(INCOMING)
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
   rack        Rack        @relation(fields: [rackId], references: [id])

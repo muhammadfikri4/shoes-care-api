@@ -1,4 +1,5 @@
 import {
+  Promo,
   Rack,
   Transaction,
   TransactionHistory,
@@ -11,5 +12,6 @@ export interface TransactionData extends Transaction {
       rack: Rack;
     }
   >;
+  promo: Promo | null;
   TransactionHistory: TransactionHistory[];
 }

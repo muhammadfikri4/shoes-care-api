@@ -15,6 +15,7 @@ import {
   getDetailTransaction,
   readyToPickupController,
   completeController,
+  updateTransactionItemStatusController,
 } from "./transactions.controller";
 import { scanSchema } from "./transactions.request";
 import { CatchWrapper } from "../../utils/CatchWrapper";
@@ -61,6 +62,12 @@ router
     VerifyToken(),
     requireRole("ADMIN", "SUPERADMIN"),
     CatchWrapper(completeController)
+  )
+  .put(
+    "/items/completed/:transactionItemId",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN"),
+    CatchWrapper(updateTransactionItemStatusController)
   )
   .post("/promo/verify", VerifyToken(), CatchWrapper(verifyPromoController));
 

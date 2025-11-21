@@ -1,4 +1,8 @@
-import { PaymentMethod, TransactionStatus } from "@prisma/client";
+import {
+  PaymentMethod,
+  TransactionStatus,
+  TransactionItemStatus,
+} from "@prisma/client";
 import QRCode from "qrcode";
 import { MESSAGE_CODE } from "../../utils/error-code";
 import { ErrorApp } from "../../utils/http-error";
@@ -28,6 +32,8 @@ import {
   listFilteredTransactionsRepo,
   pickupTransactionAtomicRepo,
   readyToPickupAtomicRepo,
+  updateTransactionItemStatusRepo,
+  updateAllTransactionItemsStatusRepo,
 } from "./transactions.repository";
 
 import { config } from "../../libs";
@@ -593,4 +599,36 @@ export const markCompleted = async (data: TransactionIdDTO) => {
   }
 
   return { ok: true };
+};
+
+export const updateTransactionItemStatus = async (
+  transactionItemId: string,
+  status: TransactionItemStatus
+) => {
+  try {
+    await updateTransactionItemStatusRepo(transactionItemId, status);
+    return { ok: true };
+  } catch (error) {
+    return new ErrorApp(
+      "Gagal mengubah status item transaksi",
+      500,
+      MESSAGE_CODE.INTERNAL_SERVER_ERROR
+    );
+  }
+};
+
+export const updateAllTransactionItemsStatus = async (
+  transactionId: string,
+  status: TransactionItemStatus
+) => {
+  try {
+    await updateAllTransactionItemsStatusRepo(transactionId, status);
+    return { ok: true };
+  } catch (error) {
+    return new ErrorApp(
+      "Gagal mengubah status semua item transaksi",
+      500,
+      MESSAGE_CODE.INTERNAL_SERVER_ERROR
+    );
+  }
 };
