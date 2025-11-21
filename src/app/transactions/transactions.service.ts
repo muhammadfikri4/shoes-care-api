@@ -58,17 +58,11 @@ export const checkAndIssuePromoIfEligible = async (
       return;
     }
 
-    // Get threshold from promo configuration (default 10 if not exists)
     const threshold = await promoRepository.getPromoThresholdRepo();
-    console.log(
-      `[Promo] Check eligibility - Count: ${customer.promoEligibilityCount}, Threshold: ${threshold}`
-    );
 
-    // Check if customer is eligible for promo
     if (customer.promoEligibilityCount >= threshold) {
       console.log("[Promo] Customer is eligible! Issuing promo...");
 
-      // Generate unique promo code
       const genCode = () =>
         `PROMO-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
       let c = genCode();
@@ -78,27 +72,22 @@ export const checkAndIssuePromoIfEligible = async (
         c = genCode();
       }
 
-      // Issue new promo
       const newPromo = await promoRepository.createPromoRepo({
         userId: customerUserId,
         code: c,
         discountPercent: 100,
       });
-      console.log("[Promo] Promo created:", newPromo.code);
 
-      // Update user: reset counter and increment total promos
       await userRepository.updateUserPromoTracking(customerUserId, {
         promoEligibilityCount: 0,
         totalPromosReceived: (customer.totalPromosReceived || 0) + 1,
       });
-      console.log("[Promo] User tracking updated - Counter reset to 0");
 
-      // Send promo email (separate try-catch to not fail the whole process)
       if (email) {
         console.log("[Promo] Sending email to:", email);
         try {
           const actionUrl = config.CLIENT_URL || undefined;
-          const send = await SendPromoCodeEmail(
+          await SendPromoCodeEmail(
             email,
             name || "",
             newPromo.code,
@@ -106,30 +95,9 @@ export const checkAndIssuePromoIfEligible = async (
             actionUrl
           );
 
-          // Log detailed response
-          console.log("[Promo] Brevo Response Status:", send?.response?.statusCode);
-          console.log("[Promo] Brevo Message ID:", send?.body?.messageId);
-          console.log("[Promo] Full Response Body:", JSON.stringify(send?.body));
-
-          // Log email details for debugging
-          console.log("[Promo] Email Details:", {
-            to: email,
-            name: name || "",
-            subject: `Selamat! Anda Mendapat Promo ${newPromo.discountPercent ?? 100}%`,
-            code: newPromo.code,
-            discount: newPromo.discountPercent ?? 100,
-            actionUrl: actionUrl || "none",
-          });
-
           console.log("[Promo] Email sent successfully to:", email);
         } catch (emailError) {
           console.error("[Promo] Failed to send email:", emailError);
-          console.error("[Promo] Email details:", {
-            to: email,
-            name,
-            code: newPromo.code,
-            discount: newPromo.discountPercent,
-          });
         }
       } else {
         console.warn("[Promo] No email provided, skipping email sending");
@@ -149,11 +117,9 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
   const phone = data.customerPhone?.trim();
 
   if (email) {
-    // if user email exist
     const existingUser = await userRepository.getUserByEmail(email);
 
     if (existingUser) {
-      // error if admin user
       if (existingUser.role === "ADMIN" || existingUser.role === "SUPERADMIN") {
         throw new ErrorApp(
           "Email ini terdaftar sebagai admin. Gunakan email lain untuk customer.",
@@ -161,10 +127,8 @@ export const ensureCustomer = async (data: CreateTransactionDTO) => {
           MESSAGE_CODE.BAD_REQUEST
         );
       }
-      // User existing user customer
       customerUserId = existingUser.id;
     } else {
-      // create if not exist
       const user = await userRepository.upsertCustomerByEmail(email, name);
       customerUserId = user.id;
     }
@@ -198,7 +162,6 @@ export const createTransaction = async (
     });
   }
 
-  // 4) Compute base and final price
   let finalPrice = uploadedItems.reduce(
     (acc, it) => acc + (Number(it.price) || 0),
     0
@@ -223,7 +186,6 @@ export const createTransaction = async (
         MESSAGE_CODE.BAD_REQUEST
       );
     }
-    // Check if promo has already been used
     if (promo.isUsed) {
       return new ErrorApp(
         "Kode promo sudah pernah digunakan",
@@ -240,7 +202,6 @@ export const createTransaction = async (
     );
   }
 
-  // 5) Validate payment if CASH
   if (data.paymentMethod === PaymentMethod.CASH) {
     if (isNaN(Number(data.cashPaid))) {
       return new ErrorApp(
@@ -258,13 +219,10 @@ export const createTransaction = async (
     }
   }
 
-  // 6) Prepare invoice (use code) + QR data (must match scanner parser: qr-{code})
   const qrData = `qr-${code}`;
 
-  // 7) Generate QR code and upload to storage bucket
   let qrCodeUrl: string | undefined;
   try {
-    // Generate QR code as PNG buffer
     const qrBuffer = await QRCode.toBuffer(qrData, {
       width: 300,
       margin: 2,
@@ -272,7 +230,6 @@ export const createTransaction = async (
       type: "png",
     });
 
-    // Upload to storage bucket
     const qrFileName = `${code}.png`;
     const qrPath = `transactions/qr-codes/${qrFileName}`;
     const qrKey = `${config.STORAGE.BUCKET_FOLDER}/${qrPath}`;
@@ -285,11 +242,9 @@ export const createTransaction = async (
       ACL: "public-read",
     });
 
-    // Get public URL
     qrCodeUrl = GetPublicURL(qrPath);
   } catch (error) {
     console.error("Failed to generate/upload QR code:", error);
-    // Continue without QR URL - transaction can still be created
   }
 
   let midtransToken: string | undefined;
@@ -332,11 +287,11 @@ export const createTransaction = async (
     payment.cashPaid = data.cashPaid ?? 0;
     payment.cashChange = Math.max(0, (payment.cashPaid || 0) - finalPrice);
   }
-  // 8) Persist transaction atomically
   const created = await createTransactionAtomicRepo({
     createdByUserId,
     customerUserId,
-    basePrice: finalPrice,
+    basePrice:
+      data.items?.reduce((acc, it) => acc + (Number(it.price) || 0), 0) || 0,
     finalPrice,
     promoApplied,
     code,
@@ -355,8 +310,6 @@ export const createTransaction = async (
     midtransRedirectUrl,
   });
 
-  // 9) Increment promo eligibility for CASH payment (status IN_PROGRESS) - only when no promo is used
-  // Then check eligibility and issue promo if threshold is met
   if (
     customerUserId &&
     data.paymentMethod === PaymentMethod.CASH &&
@@ -371,7 +324,6 @@ export const createTransaction = async (
           promoEligibilityCount: newCount,
         });
 
-        // After incrementing, check if customer is now eligible for promo
         await checkAndIssuePromoIfEligible(customerUserId, email, name);
       }
     } catch (e) {
@@ -379,7 +331,6 @@ export const createTransaction = async (
     }
   }
 
-  // 10) Send transaction notification email with QR code and tracking button
   try {
     if (email) {
       const trackingBase = config.CLIENT_URL;

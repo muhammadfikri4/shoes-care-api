@@ -88,7 +88,7 @@ export const uploadItemFiles = async (
   fileNamePrefix?: string
 ) => {
   const uploadedKeys: string[] = [];
-  const itemsData = items.map((it) => ({ ...it }));
+  const itemsData = items;
   const safeUserId = userId ?? "guest";
   for (let i = 0; i < itemsData.length; i++) {
     const file = itemsData[i].file as Express.Multer.File | undefined;
