@@ -10,6 +10,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: shoes-care-api (shoes-care / production)
+    env:
+      SERVICE_NAME: "Shoes Care API"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,6 +22,7 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "🚀 Deployment Started"
           embed-description: |
+            **Service:** ${{ env.SERVICE_NAME }}
             **Repository:** ${{ github.repository }}
             **Branch:** `${{ github.ref_name }}`
             **Commit:** ${{ github.event.head_commit.message }}
@@ -47,6 +50,7 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "✅ Deployment Successful"
           embed-description: |
+            **Service:** ${{ env.SERVICE_NAME }}
             **Repository:** ${{ github.repository }}
             **Branch:** `${{ github.ref_name }}`
             **Commit:** ${{ github.event.head_commit.message }}
@@ -61,6 +65,7 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "❌ Deployment Failed"
           embed-description: |
+            **Service:** ${{ env.SERVICE_NAME }}
             **Repository:** ${{ github.repository }}
             **Branch:** `${{ github.ref_name }}`
             **Commit:** ${{ github.event.head_commit.message }}
