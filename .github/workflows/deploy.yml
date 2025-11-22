@@ -50,16 +50,14 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
-            **Deployment Triggered**
+            **Pipeline Start**
 
             **Branch:** `${{ github.ref_name }}`
             **Changes:**
             ${{ steps.commits.outputs.list }}
 
             **Author:** ${{ github.event.head_commit.author.name }}
-
-            _Railway is building and deploying automatically..._
-          embed-color: 3066993
+          embed-color: 16776960
           embed-url: ${{ github.event.head_commit.url }}
 
       - name: Install Railway CLI
