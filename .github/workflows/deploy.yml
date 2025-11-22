@@ -44,59 +44,36 @@ jobs:
           embed-color: 16776960
           embed-url: ${{ github.event.head_commit.url }}
 
-      - name: Wait for Railway Deployment
-        id: railway_status
+      - name: Notify Discord - Deployment Triggered
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-title: "${{ env.SERVICE_NAME }}"
+          embed-description: |
+            **Deployment Triggered**
+
+            **Branch:** `${{ github.ref_name }}`
+            **Changes:**
+            ${{ steps.commits.outputs.list }}
+
+            **Author:** ${{ github.event.head_commit.author.name }}
+
+            _Railway is building and deploying automatically..._
+          embed-color: 3066993
+          embed-url: ${{ github.event.head_commit.url }}
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy to Railway
         run: |
-          echo "Waiting for Railway deployment to start..."
-          sleep 30  # Give Railway time to pick up the push
-
-          MAX_WAIT=600  # 10 minutes
-          ELAPSED=0
-          DEPLOYMENT_FOUND=false
-
-          while [ $ELAPSED -lt $MAX_WAIT ]; do
-            echo "Checking Railway deployment status... (${ELAPSED}s elapsed)"
-            
-            # Get latest deployment status from Railway API
-            RESPONSE=$(curl -s -X POST \
-              -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
-              -H "Content-Type: application/json" \
-              "https://backboard.railway.app/graphql" \
-              -d "{\"query\":\"query { deployments(input: { serviceId: \\\"${{ secrets.RAILWAY_SERVICE_ID }}\\\", limit: 1 }) { edges { node { id status createdAt } } } }\"}")
-            
-            echo "API Response: $RESPONSE"
-            
-            # Check if response is valid JSON
-            if echo "$RESPONSE" | jq empty 2>/dev/null; then
-              STATUS=$(echo "$RESPONSE" | jq -r '.data.deployments.edges[0].node.status // "UNKNOWN"')
-              echo "Current status: $STATUS"
-              
-              if [ "$STATUS" = "SUCCESS" ]; then
-                echo "✅ Deployment successful!"
-                echo "status=success" >> $GITHUB_OUTPUT
-                exit 0
-              elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CRASHED" ]; then
-                echo "❌ Deployment failed!"
-                echo "status=failed" >> $GITHUB_OUTPUT
-                exit 1
-              elif [ "$STATUS" != "UNKNOWN" ]; then
-                DEPLOYMENT_FOUND=true
-              fi
-            else
-              echo "⚠️ Invalid JSON response from Railway API"
-            fi
-            
-            sleep 15
-            ELAPSED=$((ELAPSED + 15))
-          done
-
-          if [ "$DEPLOYMENT_FOUND" = false ]; then
-            echo "⚠️ No deployment found - Railway may not be configured for auto-deploy"
+          echo "🚀 Starting deployment to Railway..."
+          if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
+            railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
           else
-            echo "⏱️ Deployment timeout after ${MAX_WAIT}s"
+            railway up
           fi
-          echo "status=timeout" >> $GITHUB_OUTPUT
-          exit 1
+          echo "✅ Deployment completed!"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
