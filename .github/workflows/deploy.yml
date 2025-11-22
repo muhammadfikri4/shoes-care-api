@@ -22,13 +22,12 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
-            Pipeline Start
-            **Service:** ${{ env.SERVICE_NAME }}
-            **Repository:** ${{ github.repository }}
+            **Pipeline Start**
+
             **Branch:** `${{ github.ref_name }}`
             **Commit:** ${{ github.event.head_commit.message }}
             **Author:** ${{ github.event.head_commit.author.name }}
-          embed-color: 3447003
+          embed-color: 16776960
           embed-url: ${{ github.event.head_commit.url }}
 
       - name: Install Railway
@@ -51,9 +50,8 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
-            Pipeline Success
-            **Service:** ${{ env.SERVICE_NAME }}
-            **Repository:** ${{ github.repository }}
+            **Pipeline Success**
+
             **Branch:** `${{ github.ref_name }}`
             **Commit:** ${{ github.event.head_commit.message }}
             **Author:** ${{ github.event.head_commit.author.name }}
@@ -67,9 +65,8 @@ jobs:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
           embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
-            Pipeline Failed
-            **Service:** ${{ env.SERVICE_NAME }}
-            **Repository:** ${{ github.repository }}
+            **Pipeline Failed**
+
             **Branch:** `${{ github.ref_name }}`
             **Commit:** ${{ github.event.head_commit.message }}
             **Author:** ${{ github.event.head_commit.author.name }}
