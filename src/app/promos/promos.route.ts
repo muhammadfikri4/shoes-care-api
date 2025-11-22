@@ -49,7 +49,6 @@ router
     CatchWrapper(listPromosController)
   )
   .get("/check/:code", VerifyToken(), CatchWrapper(checkPromoController))
-  // Backdoor untuk upsert promo configuration
   .post(
     "/configuration",
     promoConfigBackdoorAuth,
