@@ -50,9 +50,9 @@ jobs:
       - name: Deploy
         run: |
           if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
-            railway up --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach
+            railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
           else
-            railway up --detach
+            railway up
           fi
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
