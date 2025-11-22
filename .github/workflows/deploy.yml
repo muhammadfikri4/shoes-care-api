@@ -20,8 +20,9 @@ jobs:
         uses: tsickert/discord-webhook@v5.3.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-          embed-title: "🚀 Deployment Started"
+          embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
+            Pipeline Start
             **Service:** ${{ env.SERVICE_NAME }}
             **Repository:** ${{ github.repository }}
             **Branch:** `${{ github.ref_name }}`
@@ -48,8 +49,9 @@ jobs:
         uses: tsickert/discord-webhook@v5.3.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-          embed-title: "✅ Deployment Successful"
+          embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
+            Pipeline Success
             **Service:** ${{ env.SERVICE_NAME }}
             **Repository:** ${{ github.repository }}
             **Branch:** `${{ github.ref_name }}`
@@ -63,8 +65,9 @@ jobs:
         uses: tsickert/discord-webhook@v5.3.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
-          embed-title: "❌ Deployment Failed"
+          embed-title: "${{ env.SERVICE_NAME }}"
           embed-description: |
+            Pipeline Failed
             **Service:** ${{ env.SERVICE_NAME }}
             **Repository:** ${{ github.repository }}
             **Branch:** `${{ github.ref_name }}`
