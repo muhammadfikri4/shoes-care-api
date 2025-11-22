@@ -48,12 +48,44 @@ jobs:
         run: npm i -g @railway/cli
 
       - name: Deploy
+        id: deploy
         run: |
+          echo "Starting deployment..."
           if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
-            railway up --service ${{ secrets.RAILWAY_SERVICE_ID }}
+            DEPLOYMENT_ID=$(railway up --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach --json | jq -r '.deploymentId')
           else
-            railway up
+            DEPLOYMENT_ID=$(railway up --detach --json | jq -r '.deploymentId')
           fi
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          echo "Deployment ID: $DEPLOYMENT_ID"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Wait for Deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          DEPLOYMENT_ID="${{ steps.deploy.outputs.deployment_id }}"
+          MAX_WAIT=600  # 10 minutes
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(railway status --service ${{ secrets.RAILWAY_SERVICE_ID }} --json | jq -r '.status')
+            echo "Current status: $STATUS (${ELAPSED}s elapsed)"
+            
+            if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "ACTIVE" ]; then
+              echo "✅ Deployment successful!"
+              exit 0
+            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CRASHED" ]; then
+              echo "❌ Deployment failed!"
+              exit 1
+            fi
+            
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          echo "⏱️ Deployment timeout after ${MAX_WAIT}s"
+          exit 1
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
