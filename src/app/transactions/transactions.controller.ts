@@ -5,7 +5,7 @@ import { MESSAGE_CODE } from "../../utils/error-code";
 import { HandleResponse } from "../../utils/HandleResponse";
 import * as transactionService from "./transactions.service";
 import {
-  getTransactionByInvoiceRepo,
+  getTransactionByCodeRepo,
   updateTransactionStatusByInvoiceRepo,
 } from "./transactions.repository";
 import { TransactionStatus, TransactionItemStatus } from "@prisma/client";
@@ -122,7 +122,10 @@ export const scanPickupController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const result = await transactionService.scanPickup(req.body);
+  const result = await transactionService.scanPickup(
+    req.body,
+    req.userId || ""
+  );
   if (result instanceof Error) return next(result);
   HandleResponse(
     res,
@@ -138,7 +141,10 @@ export const lookupTransactionController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const result = await transactionService.lookupTransaction(req.query);
+  const result = await transactionService.lookupTransaction(
+    req.query,
+    req.userId || ""
+  );
   if (result instanceof Error) return next(result);
   HandleResponse(
     res,
@@ -202,7 +208,7 @@ export const midtransNotifyController = async (req: Request, res: Response) => {
     await updateTransactionStatusByInvoiceRepo(order_id, status, paidAt);
 
     if (status === TransactionStatus.IN_PROGRESS) {
-      const trx = await getTransactionByInvoiceRepo(order_id);
+      const trx = await getTransactionByCodeRepo(order_id);
       if (trx) {
         await transactionService.updateAllTransactionItemsStatus(
           trx.id,

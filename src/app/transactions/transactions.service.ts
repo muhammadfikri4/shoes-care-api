@@ -1,7 +1,8 @@
 import {
   PaymentMethod,
-  TransactionStatus,
+  Role,
   TransactionItemStatus,
+  TransactionStatus,
 } from "@prisma/client";
 import QRCode from "qrcode";
 import { MESSAGE_CODE } from "../../utils/error-code";
@@ -27,13 +28,13 @@ import {
   countFilteredTransactionsRepo,
   createTransactionAtomicRepo,
   findTransactionDetailByInvoiceRepo,
+  getTransactionByCodeRepo,
   getTransactionById,
-  getTransactionByInvoiceRepo,
   listFilteredTransactionsRepo,
   pickupTransactionAtomicRepo,
   readyToPickupAtomicRepo,
-  updateTransactionItemStatusRepo,
   updateAllTransactionItemsStatusRepo,
+  updateTransactionItemStatusRepo,
 } from "./transactions.repository";
 
 import { config } from "../../libs";
@@ -404,13 +405,23 @@ export const listTransactionsByUser = async (
   return { data: rows, meta };
 };
 
-export const scanPickup = async (data: ScanQRDTO) => {
-  // qr expected format qr-{invoice}
+export const scanPickup = async (data: ScanQRDTO, userId: string) => {
+  if (!userId) {
+    return new ErrorApp(
+      "Silahkan login terlebih dahulu",
+      401,
+      MESSAGE_CODE.UNAUTHORIZED
+    );
+  }
+  const user = await userRepository.getUserById(userId);
+  if (!user) {
+    return new ErrorApp("User tidak ditemukan", 404, MESSAGE_CODE.NOT_FOUND);
+  }
   if (!data.qr.startsWith("qr-")) {
     return new ErrorApp("QR tidak valid", 400, MESSAGE_CODE.BAD_REQUEST);
   }
-  const invoice = data.qr.substring(3); // Remove "qr-" prefix
-  const trx = await getTransactionByInvoiceRepo(invoice);
+  const qr = data.qr.substring(3);
+  const trx = await getTransactionByCodeRepo(qr);
   if (!trx)
     return new ErrorApp(
       "Transaksi tidak ditemukan",
@@ -431,15 +442,28 @@ export const scanPickup = async (data: ScanQRDTO) => {
   return { ok: true };
 };
 
-export const lookupTransaction = async (params: {
-  qr?: string;
-  code?: string;
-}) => {
+export const lookupTransaction = async (
+  params: {
+    qr?: string;
+    code?: string;
+  },
+  userId: string
+) => {
+  if (!userId) {
+    return new ErrorApp(
+      "Silahkan login terlebih dahulu",
+      401,
+      MESSAGE_CODE.UNAUTHORIZED
+    );
+  }
+  const user = await userRepository.getUserById(userId);
+  if (!user) {
+    return new ErrorApp("User tidak ditemukan", 404, MESSAGE_CODE.NOT_FOUND);
+  }
   let code: string | undefined = params.code;
-  console.log({ params });
   if (params.qr && !code) {
     if (params.qr.startsWith("qr-")) {
-      code = params.qr.substring(3); // Remove "qr-" prefix
+      code = params.qr.substring(3);
     } else {
       return new ErrorApp("QR tidak valid", 400, MESSAGE_CODE.BAD_REQUEST);
     }
@@ -451,7 +475,10 @@ export const lookupTransaction = async (params: {
       MESSAGE_CODE.BAD_REQUEST
     );
   }
-  const trx = await findTransactionDetailByInvoiceRepo(code);
+  const trx = await findTransactionDetailByInvoiceRepo(
+    code,
+    user.role === Role.ADMIN || Role.SUPERADMIN ? undefined : userId
+  );
   if (!trx)
     return new ErrorApp(
       "Transaksi tidak ditemukan",
@@ -460,7 +487,6 @@ export const lookupTransaction = async (params: {
     );
   const safeUserId = trx.customerUserId ?? "guest";
 
-  // Resolve QR code URL with fallback
   let qrCodeUrl: string | undefined;
   if (trx.qrCodeUrl) {
     qrCodeUrl = trx.qrCodeUrl;
