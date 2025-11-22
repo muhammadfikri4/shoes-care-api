@@ -44,47 +44,52 @@ jobs:
           embed-color: 16776960
           embed-url: ${{ github.event.head_commit.url }}
 
-      - name: Install Railway
-        run: npm i -g @railway/cli
-
-      - name: Deploy
-        id: deploy
+      - name: Wait for Railway Deployment
+        id: railway_status
         run: |
-          echo "Starting deployment..."
-          if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
-            DEPLOYMENT_ID=$(railway up --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach --json | jq -r '.deploymentId')
-          else
-            DEPLOYMENT_ID=$(railway up --detach --json | jq -r '.deploymentId')
-          fi
-          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
-          echo "Deployment ID: $DEPLOYMENT_ID"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          echo "Waiting for Railway deployment to start..."
+          sleep 30  # Give Railway time to pick up the push
 
-      - name: Wait for Deployment
-        run: |
-          echo "Waiting for deployment to complete..."
-          DEPLOYMENT_ID="${{ steps.deploy.outputs.deployment_id }}"
           MAX_WAIT=600  # 10 minutes
           ELAPSED=0
+          DEPLOYMENT_FOUND=false
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
-            STATUS=$(railway status --service ${{ secrets.RAILWAY_SERVICE_ID }} --json | jq -r '.status')
-            echo "Current status: $STATUS (${ELAPSED}s elapsed)"
+            echo "Checking Railway deployment status... (${ELAPSED}s elapsed)"
             
-            if [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "ACTIVE" ]; then
+            # Get latest deployment status from Railway API
+            RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+              "https://backboard.railway.app/graphql" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "query": "query { deployments(input: { serviceId: \"${{ secrets.RAILWAY_SERVICE_ID }}\", limit: 1 }) { edges { node { id status createdAt } } } }"
+              }')
+            
+            STATUS=$(echo $RESPONSE | jq -r '.data.deployments.edges[0].node.status // "UNKNOWN"')
+            echo "Current status: $STATUS"
+            
+            if [ "$STATUS" = "SUCCESS" ]; then
               echo "✅ Deployment successful!"
+              echo "status=success" >> $GITHUB_OUTPUT
               exit 0
             elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CRASHED" ]; then
               echo "❌ Deployment failed!"
+              echo "status=failed" >> $GITHUB_OUTPUT
               exit 1
+            elif [ "$STATUS" != "UNKNOWN" ]; then
+              DEPLOYMENT_FOUND=true
             fi
             
-            sleep 10
-            ELAPSED=$((ELAPSED + 10))
+            sleep 15
+            ELAPSED=$((ELAPSED + 15))
           done
 
-          echo "⏱️ Deployment timeout after ${MAX_WAIT}s"
+          if [ "$DEPLOYMENT_FOUND" = false ]; then
+            echo "⚠️ No deployment found - Railway may not be configured for auto-deploy"
+          else
+            echo "⏱️ Deployment timeout after ${MAX_WAIT}s"
+          fi
+          echo "status=timeout" >> $GITHUB_OUTPUT
           exit 1
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
