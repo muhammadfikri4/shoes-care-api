@@ -58,26 +58,32 @@ jobs:
             echo "Checking Railway deployment status... (${ELAPSED}s elapsed)"
             
             # Get latest deployment status from Railway API
-            RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
-              "https://backboard.railway.app/graphql" \
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
               -H "Content-Type: application/json" \
-              -d '{
-                "query": "query { deployments(input: { serviceId: \"${{ secrets.RAILWAY_SERVICE_ID }}\", limit: 1 }) { edges { node { id status createdAt } } } }"
-              }')
+              "https://backboard.railway.app/graphql" \
+              -d "{\"query\":\"query { deployments(input: { serviceId: \\\"${{ secrets.RAILWAY_SERVICE_ID }}\\\", limit: 1 }) { edges { node { id status createdAt } } } }\"}")
             
-            STATUS=$(echo $RESPONSE | jq -r '.data.deployments.edges[0].node.status // "UNKNOWN"')
-            echo "Current status: $STATUS"
+            echo "API Response: $RESPONSE"
             
-            if [ "$STATUS" = "SUCCESS" ]; then
-              echo "✅ Deployment successful!"
-              echo "status=success" >> $GITHUB_OUTPUT
-              exit 0
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CRASHED" ]; then
-              echo "❌ Deployment failed!"
-              echo "status=failed" >> $GITHUB_OUTPUT
-              exit 1
-            elif [ "$STATUS" != "UNKNOWN" ]; then
-              DEPLOYMENT_FOUND=true
+            # Check if response is valid JSON
+            if echo "$RESPONSE" | jq empty 2>/dev/null; then
+              STATUS=$(echo "$RESPONSE" | jq -r '.data.deployments.edges[0].node.status // "UNKNOWN"')
+              echo "Current status: $STATUS"
+              
+              if [ "$STATUS" = "SUCCESS" ]; then
+                echo "✅ Deployment successful!"
+                echo "status=success" >> $GITHUB_OUTPUT
+                exit 0
+              elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CRASHED" ]; then
+                echo "❌ Deployment failed!"
+                echo "status=failed" >> $GITHUB_OUTPUT
+                exit 1
+              elif [ "$STATUS" != "UNKNOWN" ]; then
+                DEPLOYMENT_FOUND=true
+              fi
+            else
+              echo "⚠️ Invalid JSON response from Railway API"
             fi
             
             sleep 15
