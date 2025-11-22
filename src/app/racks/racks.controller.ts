@@ -51,7 +51,7 @@ export const updateRackController = async (
   );
 };
 
-export const removeRacController = async (
+export const removeRackController = async (
   req: RequestWithAccessToken,
   res: Response,
   next: NextFunction
