@@ -26,7 +26,6 @@ jobs:
             **Author:** ${{ github.event.head_commit.author.name }}
           embed-color: 3447003
           embed-url: ${{ github.event.head_commit.url }}
-          embed-timestamp: true
 
       - name: Install Railway
         run: npm i -g @railway/cli
@@ -54,7 +53,6 @@ jobs:
             **Author:** ${{ github.event.head_commit.author.name }}
           embed-color: 3066993
           embed-url: ${{ github.event.head_commit.url }}
-          embed-timestamp: true
 
       - name: Notify Discord - Failure
         if: failure()
@@ -69,4 +67,3 @@ jobs:
             **Author:** ${{ github.event.head_commit.author.name }}
           embed-color: 15158332
           embed-url: ${{ github.event.head_commit.url }}
-          embed-timestamp: true
