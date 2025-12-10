@@ -182,82 +182,73 @@ export const verifyPromoController = async (
 };
 
 export const midtransNotifyController = async (req: Request, res: Response) => {
-  try {
-    const { order_id, transaction_status } = req.body || {};
-    if (!order_id) {
-      return HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "OK");
-    }
+  const { order_id, transaction_status } = req.body || {};
+  if (!order_id) {
+    return HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "OK");
+  }
 
-    let status: TransactionStatus = TransactionStatus.CREATED;
-    let paidAt: Date | undefined;
+  let status: TransactionStatus = TransactionStatus.CREATED;
+  let paidAt: Date | undefined;
 
-    if (
-      transaction_status === "capture" ||
-      transaction_status === "settlement"
-    ) {
-      status = TransactionStatus.IN_PROGRESS;
-      paidAt = new Date();
-    } else if (
-      transaction_status === "deny" ||
-      transaction_status === "expire" ||
-      transaction_status === "cancel"
-    ) {
-      status = TransactionStatus.CANCELLED;
-    }
+  if (transaction_status === "capture" || transaction_status === "settlement") {
+    status = TransactionStatus.IN_PROGRESS;
+    paidAt = new Date();
+  } else if (
+    transaction_status === "deny" ||
+    transaction_status === "expire" ||
+    transaction_status === "cancel"
+  ) {
+    status = TransactionStatus.CANCELLED;
+  }
 
-    await updateTransactionStatusByInvoiceRepo(order_id, status, paidAt);
+  await updateTransactionStatusByInvoiceRepo(order_id, status, paidAt);
 
-    if (status === TransactionStatus.IN_PROGRESS) {
-      const trx = await getTransactionByCodeRepo(order_id);
-      if (trx) {
-        await transactionService.updateAllTransactionItemsStatus(
-          trx.id,
-          TransactionItemStatus.IN_PROGRESS
-        );
+  if (status === TransactionStatus.IN_PROGRESS) {
+    const trx = await getTransactionByCodeRepo(order_id);
+    if (trx) {
+      await transactionService.updateAllTransactionItemsStatus(
+        trx.id,
+        TransactionItemStatus.IN_PROGRESS
+      );
 
-        if (trx.customerUserId && !trx.promoApplied) {
-          try {
-            const customer = await userRepository.getUserById(
-              trx.customerUserId
+      if (trx.customerUserId && !trx.promoApplied) {
+        try {
+          const customer = await userRepository.getUserById(trx.customerUserId);
+          if (customer) {
+            const newCount = (customer.promoEligibilityCount || 0) + 1;
+            await userRepository.updateUserPromoTracking(trx.customerUserId, {
+              promoEligibilityCount: newCount,
+            });
+
+            await transactionService.checkAndIssuePromoIfEligible(
+              trx.customerUserId,
+              trx.customerEmail || undefined || "",
+              trx.customerName || undefined
             );
-            if (customer) {
-              const newCount = (customer.promoEligibilityCount || 0) + 1;
-              await userRepository.updateUserPromoTracking(trx.customerUserId, {
-                promoEligibilityCount: newCount,
-              });
-
-              await transactionService.checkAndIssuePromoIfEligible(
-                trx.customerUserId,
-                trx.customerEmail || undefined || "",
-                trx.customerName || undefined
-              );
-            }
-          } catch (e) {
-            console.warn("Failed to increment promo eligibility:", e);
           }
-        }
-
-        if (trx.customerEmail) {
-          const trackingBase = config.CLIENT_URL;
-          const trackingUrl = trackingBase
-            ? `${trackingBase}/transaction/portal/${trx.id}`
-            : undefined;
-          await SendPaymentSuccessEmail({
-            to: trx.customerEmail,
-            name: trx.customerName || undefined,
-            code: trx.code,
-            qrData: trx.qrCodeData,
-            qrCodeUrl: trx.qrCodeUrl || undefined,
-            trackingUrl,
-            amount: Number(trx.finalPrice ?? trx.price),
-          });
+        } catch (e) {
+          console.warn("Failed to increment promo eligibility:", e);
         }
       }
+
+      if (trx.customerEmail) {
+        const trackingBase = config.CLIENT_URL;
+        const trackingUrl = trackingBase
+          ? `${trackingBase}/transaction/portal/${trx.id}`
+          : undefined;
+        await SendPaymentSuccessEmail({
+          to: trx.customerEmail,
+          name: trx.customerName || undefined,
+          code: trx.code,
+          qrData: trx.qrCodeData,
+          qrCodeUrl: trx.qrCodeUrl || undefined,
+          trackingUrl,
+          amount: Number(trx.finalPrice ?? trx.price),
+        });
+      }
     }
-    return res.json({ ok: true });
-  } catch (e) {
-    return res.status(500).json({ ok: false });
   }
+  return res.json({ ok: true });
 };
 
 export const readyToPickupController = async (
