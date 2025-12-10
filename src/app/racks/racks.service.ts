@@ -27,8 +27,11 @@ export const createRack = async (data: CreateRackDTO) => {
 
 export const listRacks = async (query: Query) => {
   const { page = "1", perPage = "10" } = query;
-  const racks = await Promise.all([getRacks(query), getRacksCount(query)]);
-  const meta = Meta(Number(page), Number(perPage), racks[1]);
+  const [racks, totalData] = await Promise.all([
+    getRacks(query),
+    getRacksCount(query),
+  ]);
+  const meta = Meta(Number(page), Number(perPage), totalData);
   return { data: racks, meta };
 };
 
