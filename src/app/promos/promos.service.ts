@@ -11,6 +11,8 @@ import {
   getPromos,
   getPromosCount,
   upsertPromoConfigurationRepo,
+  getPromoSummaryAdminRepo,
+  getPromoSummaryCustomerRepo,
 } from "./promos.repository";
 
 export const verifyPromoService = async (email: string, code: string) => {
@@ -105,4 +107,37 @@ export const upsertPromoConfigurationService = async (
 
   const config = await upsertPromoConfigurationRepo(id, requiredTransactions);
   return config;
+};
+
+export const getPromoSummaryService = async (userId: string) => {
+  const user = await userRepository.getUserById(userId);
+  if (!user) {
+    return new ErrorApp("User not found", 404, MESSAGE_CODE.NOT_FOUND);
+  }
+
+  if (user.role === Role.SUPERADMIN || user.role === Role.ADMIN) {
+    const adminSummary = await getPromoSummaryAdminRepo();
+    return {
+      totalPromo: adminSummary.totalPromo,
+      totalCustomerWithPromo: adminSummary.totalCustomerWithPromo,
+      totalPromoUsed: adminSummary.totalPromoUsed,
+      totalPromoUnused: adminSummary.totalPromoUnused,
+      totalPromoOwned: 0,
+      customerTotalPromoUsed: 0,
+      customerTotalPromoUnused: 0,
+      totalTransactionAfterPromo: 0,
+    };
+  } else {
+    const customerSummary = await getPromoSummaryCustomerRepo(userId);
+    return {
+      totalPromo: 0,
+      totalCustomerWithPromo: 0,
+      totalPromoUsed: 0,
+      totalPromoUnused: 0,
+      totalPromoOwned: customerSummary.totalPromoOwned,
+      customerTotalPromoUsed: customerSummary.totalPromoUsed,
+      customerTotalPromoUnused: customerSummary.totalPromoUnused,
+      totalTransactionAfterPromo: user.promoEligibilityCount,
+    };
+  }
 };

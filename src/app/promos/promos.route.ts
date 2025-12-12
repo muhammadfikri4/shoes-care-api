@@ -6,6 +6,7 @@ import {
   checkPromoController,
   listPromosController,
   upsertPromoConfigurationController,
+  getPromoSummaryController,
 } from "./promos.controller";
 import { config } from "../../libs";
 import { Request, Response, NextFunction } from "express";
@@ -26,7 +27,7 @@ const promoConfigBackdoorAuth = (
       "You're not allowed to access this route"
     );
   }
-console.log({ providedKey, secret: config.JWT_SECRET })
+  console.log({ providedKey, secret: config.JWT_SECRET });
   if (providedKey !== config.JWT_SECRET) {
     return HandleResponse(
       res,
@@ -47,6 +48,12 @@ router
     VerifyToken(),
     requireRole("ADMIN", "SUPERADMIN", "CUSTOMER"),
     CatchWrapper(listPromosController)
+  )
+  .get(
+    "/summarize",
+    VerifyToken(),
+    requireRole("ADMIN", "SUPERADMIN", "CUSTOMER"),
+    CatchWrapper(getPromoSummaryController)
   )
   .get("/check/:code", VerifyToken(), CatchWrapper(checkPromoController))
   .post(

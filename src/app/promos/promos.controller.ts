@@ -7,6 +7,7 @@ import {
   checkPromoByCodeService,
   listPromosService,
   upsertPromoConfigurationService,
+  getPromoSummaryService,
 } from "./promos.service";
 
 export const listPromosController = async (
@@ -17,7 +18,14 @@ export const listPromosController = async (
   const { userId, query } = req;
   const result = await listPromosService(userId ?? "", query);
   if (result instanceof ErrorApp) return next(result);
-  HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Daftar promo", result.data, result.meta);
+  HandleResponse(
+    res,
+    200,
+    MESSAGE_CODE.SUCCESS,
+    "Daftar promo",
+    result.data,
+    result.meta
+  );
 };
 
 export const checkPromoController = async (
@@ -51,4 +59,16 @@ export const upsertPromoConfigurationController = async (
     "Promo configuration berhasil diupsert",
     result
   );
+};
+
+export const getPromoSummaryController = async (
+  req: RequestWithAccessToken,
+  res: Response,
+  next: NextFunction
+) => {
+  const { userId } = req;
+  const result = await getPromoSummaryService(userId ?? "");
+  if (result instanceof ErrorApp) return next(result);
+
+  HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Promo summary", result);
 };

@@ -105,3 +105,39 @@ export const upsertPromoConfigurationRepo = async (
     data: { requiredTransactions },
   });
 };
+
+export const getPromoSummaryAdminRepo = async () => {
+  const [totalPromo, totalPromoUsed, totalPromoUnused, customerWithPromo] =
+    await Promise.all([
+      prisma.promo.count(),
+      prisma.promo.count({ where: { isUsed: true } }),
+      prisma.promo.count({ where: { isUsed: false } }),
+      prisma.promo.groupBy({
+        by: ["userId"],
+        _count: true,
+      }),
+    ]);
+
+  return {
+    totalPromo,
+    totalCustomerWithPromo: customerWithPromo.length,
+    totalPromoUsed,
+    totalPromoUnused,
+  };
+};
+
+export const getPromoSummaryCustomerRepo = async (userId: string) => {
+  const [totalPromoOwned, totalPromoUsed, totalPromoUnused] = await Promise.all(
+    [
+      prisma.promo.count({ where: { userId } }),
+      prisma.promo.count({ where: { userId, isUsed: true } }),
+      prisma.promo.count({ where: { userId, isUsed: false } }),
+    ]
+  );
+
+  return {
+    totalPromoOwned,
+    totalPromoUsed,
+    totalPromoUnused,
+  };
+};
