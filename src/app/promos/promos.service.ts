@@ -59,9 +59,23 @@ export const listPromosService = async (
       }),
     }),
   ]);
-
+  const getPromosDTOMapper = promos.map((item) => ({
+    id: item.id,
+    code: item.code,
+    discountPercent: item.discountPercent,
+    isActive: item.isActive,
+    isUsed: item.isUsed,
+    userId: item.userId,
+    createdAt: item.createdAt,
+    usedAt: item.usedAt,
+    user: {
+      id: item.user.id,
+      email: item.user.email,
+      role: item.user.role,
+    },
+  }));
   const meta = Meta(Number(page), Number(perPage), totalData);
-  return { data: promos, meta };
+  return { data: getPromosDTOMapper, meta };
 };
 
 export const checkPromoByCodeService = async (
