@@ -13,6 +13,7 @@ import {
   upsertPromoConfigurationRepo,
   getPromoSummaryAdminRepo,
   getPromoSummaryCustomerRepo,
+  getPromoConfigurationRepo,
 } from "./promos.repository";
 
 export const verifyPromoService = async (email: string, code: string) => {
@@ -119,7 +120,17 @@ export const upsertPromoConfigurationService = async (
     );
   }
 
-  const config = await upsertPromoConfigurationRepo(id, requiredTransactions);
+  const existingConfig = await getPromoConfigurationRepo();
+
+  const config = await upsertPromoConfigurationRepo(
+    existingConfig?.id,
+    requiredTransactions
+  );
+  return config;
+};
+
+export const getPromoConfigurationService = async () => {
+  const config = await getPromoConfigurationRepo();
   return config;
 };
 

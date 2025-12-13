@@ -141,3 +141,9 @@ export const getPromoSummaryCustomerRepo = async (userId: string) => {
     totalPromoUnused,
   };
 };
+
+export const getPromoConfigurationRepo = async () => {
+  return prisma.promoConfiguration.findFirst({
+    orderBy: { createdAt: "desc" },
+  });
+};

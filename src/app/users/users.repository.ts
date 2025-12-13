@@ -53,3 +53,51 @@ export const updateUserPromoTracking = async (
     data,
   });
 };
+
+export const getCustomersRepo = async (
+  query: import("./users.dto").GetCustomersQueryDTO
+) => {
+  const { search, page = "1", perPage = "10" } = query;
+  const skip = (Number(page) - 1) * Number(perPage);
+  const take = Number(perPage);
+
+  return prisma.user.findMany({
+    where: {
+      role: Role.CUSTOMER,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    },
+    include: {
+      _count: {
+        select: {
+          transactionsAsCustomer: true,
+          Promo: true,
+        },
+      },
+    },
+    skip,
+    take,
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getCustomersCountRepo = async (
+  query: import("./users.dto").GetCustomersQueryDTO
+) => {
+  const { search } = query;
+  return prisma.user.count({
+    where: {
+      role: Role.CUSTOMER,
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    },
+  });
+};

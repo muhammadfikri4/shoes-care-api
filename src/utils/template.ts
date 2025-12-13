@@ -132,6 +132,8 @@ export const buildInvoiceHtml = (opts: {
   name?: string;
   email?: string;
   amount?: number;
+  totalBeforeDiscount?: number;
+  discount?: number;
   paymentMethod?: string;
   trackingUrl?: string;
   actionUrl?: string;
@@ -145,6 +147,8 @@ export const buildInvoiceHtml = (opts: {
     name,
     email,
     amount,
+    totalBeforeDiscount,
+    discount,
     paymentMethod,
     trackingUrl,
     actionUrl,
@@ -154,6 +158,11 @@ export const buildInvoiceHtml = (opts: {
   const money =
     typeof amount === "number"
       ? new Intl.NumberFormat("id-ID").format(amount)
+      : undefined;
+
+  const moneyBeforeDiscount =
+    typeof totalBeforeDiscount === "number"
+      ? new Intl.NumberFormat("id-ID").format(totalBeforeDiscount)
       : undefined;
 
   return `<!DOCTYPE html>
@@ -201,7 +210,14 @@ export const buildInvoiceHtml = (opts: {
                         ${
                           money
                             ? `
-                        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Total</div>
+                        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${moneyBeforeDiscount && discount ? "Total Awal" : "Total"}</div>
+                        ${
+                          moneyBeforeDiscount && discount
+                            ? `<div style="font-size:14px;color:#ef4444;text-decoration:line-through;margin-bottom:2px">Rp ${moneyBeforeDiscount}</div>
+                               <div style="font-size:12px;color:#10b981;margin-bottom:4px">Diskon ${discount}%</div>
+                               <div style="font-size:12px;color:#6b7280;margin-bottom:4px;margin-top:8px">Total Setelah Diskon</div>`
+                            : ""
+                        }
                         <div style="font-size:20px;font-weight:700;margin-bottom:16px">Rp ${money}</div>
                         `
                             : ""

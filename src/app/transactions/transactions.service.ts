@@ -352,6 +352,10 @@ export const createTransaction = async (
         qrCodeUrl,
         trackingUrl,
         amount: finalPrice,
+        totalBeforeDiscount: promoApplied
+          ? uploadedItems.reduce((acc, it) => acc + (Number(it.price) || 0), 0)
+          : undefined,
+        discount: promoApplied ? discountPercent : undefined,
         paymentMethod: data.paymentMethod,
         midtransUrl: midtransRedirectUrl || undefined,
       });

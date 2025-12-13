@@ -9,15 +9,17 @@ import { VerifyToken } from "../middleware/verifyToken";
 import racksRoute from "../app/racks/racks.route";
 import transactionsRoute from "../app/transactions/transactions.route";
 import promosRoute from "../app/promos/promos.route";
+import configurationRoute from "../app/promos/configuration.route";
 
 const route = Router();
 
 // Gabungkan semua route di sini
-route.use('/auth',authRoutes);
-route.use('/users', VerifyToken(), userRoutes);
-route.use('/racks', racksRoute);
-route.use('/transactions', transactionsRoute);
-route.use('/promos', promosRoute);
+route.use("/auth", authRoutes);
+route.use("/users", VerifyToken(), userRoutes);
+route.use("/racks", racksRoute);
+route.use("/transactions", transactionsRoute);
+route.use("/promos", promosRoute);
+route.use("/configuration", configurationRoute);
 
 route.get("/", (req: Request, res: Response) => {
   return res.json({ message: "Hello World 🚀" });

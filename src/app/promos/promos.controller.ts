@@ -8,6 +8,7 @@ import {
   listPromosService,
   upsertPromoConfigurationService,
   getPromoSummaryService,
+  getPromoConfigurationService,
 } from "./promos.service";
 
 export const listPromosController = async (
@@ -44,10 +45,9 @@ export const upsertPromoConfigurationController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { id } = req.params;
   const { requiredTransactions } = req.body ?? {};
 
-  const result = await upsertPromoConfigurationService(id, {
+  const result = await upsertPromoConfigurationService(undefined, {
     requiredTransactions,
   });
   if (result instanceof ErrorApp) return next(result);
@@ -59,6 +59,17 @@ export const upsertPromoConfigurationController = async (
     "Promo configuration berhasil diupsert",
     result
   );
+};
+
+export const getPromoConfigurationController = async (
+  req: RequestWithAccessToken,
+  res: Response,
+  next: NextFunction
+) => {
+  const result = await getPromoConfigurationService();
+  if (result instanceof ErrorApp) return next(result);
+
+  HandleResponse(res, 200, MESSAGE_CODE.SUCCESS, "Promo configuration", result);
 };
 
 export const getPromoSummaryController = async (

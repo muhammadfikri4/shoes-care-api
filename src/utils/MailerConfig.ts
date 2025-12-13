@@ -85,6 +85,8 @@ export const SendTransactionNotificationEmail = async (payload: {
   qrCodeUrl?: string;
   trackingUrl?: string;
   amount?: number;
+  totalBeforeDiscount?: number;
+  discount?: number;
   paymentMethod?: string;
   midtransUrl?: string;
 }) => {
@@ -96,6 +98,8 @@ export const SendTransactionNotificationEmail = async (payload: {
     qrCodeUrl,
     trackingUrl,
     amount,
+    totalBeforeDiscount,
+    discount,
     paymentMethod,
     midtransUrl,
   } = payload;
@@ -109,6 +113,8 @@ export const SendTransactionNotificationEmail = async (payload: {
     code,
     name,
     amount,
+    totalBeforeDiscount,
+    discount,
     email: undefined,
     paymentMethod,
     trackingUrl,
