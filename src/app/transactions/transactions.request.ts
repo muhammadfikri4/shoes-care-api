@@ -2,8 +2,8 @@ import Joi from "joi";
 
 export const createTransactionSchema = Joi.object({
   price: Joi.number().integer().min(0).optional(),
-  customerEmail: Joi.string().email().optional(),
-  customerName: Joi.string().allow("").optional(),
+  customerEmail: Joi.string().email().required(),
+  customerName: Joi.string().required(),
   customerPhone: Joi.string().allow("").optional(),
   paymentMethod: Joi.string().valid("QRIS", "CASH", "TRANSFER").optional(),
   cashPaid: Joi.number().optional(),

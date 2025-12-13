@@ -24,7 +24,7 @@ export const otpVerifySchema = Joi.object({
 });
 
 export const customerRegisterSchema = Joi.object({
-  name: Joi.string().min(2).max(100).optional(),
+  name: Joi.string(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).max(100).required(),
 });
