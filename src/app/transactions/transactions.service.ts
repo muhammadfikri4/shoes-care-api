@@ -525,6 +525,7 @@ export const lookupTransaction = async (
         id: it.id,
         name: it.name,
         price: it.price,
+        size: it.size,
         photoUrl: it.file
           ? GetPublicURL(`transactions/shoes/${safeUserId}/${it.file}`)
           : undefined,

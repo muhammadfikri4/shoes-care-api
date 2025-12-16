@@ -17,7 +17,7 @@ export const createTransactionSchema = Joi.object({
         quantity: Joi.number().integer().min(1).optional(),
         estimateDay: Joi.number().integer().min(0).optional(),
         file: Joi.any().optional().allow(null),
-        size: Joi.string().optional(),
+        size: Joi.number().integer().optional(),
         note: Joi.any().optional(),
         rackId: Joi.string().uuid().required(),
       })

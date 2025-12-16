@@ -58,6 +58,7 @@ export const getDetailTransactionDTOMapper = async (
         ? GetPublicURL(`transactions/shoes/${userId}/${it.file}`)
         : undefined,
       estimateDay: it.estimateDay,
+      size: it.size,
       rackCode: it?.rack?.code,
       status: it.status,
     })),
