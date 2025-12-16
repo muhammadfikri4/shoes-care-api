@@ -10,6 +10,7 @@ export interface ProductItem {
   price: number;
   estimateDay?: number;
   file: Express.Multer.File | string;
+  size?: number;
   note?: string;
   // Backward compatibility (if some callers send these):
   rackId: string;

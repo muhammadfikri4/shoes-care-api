@@ -165,6 +165,7 @@ export const createTransaction = async (
         file: it.file,
         note: it.note || undefined,
         rackId: it.rackId,
+        size: Number(it.size || 0),
       };
     });
   }

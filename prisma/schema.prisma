@@ -123,14 +123,15 @@ enum TransactionItemStatus {
 }
 
 model TransactionItem {
-  id            String  @id @default(uuid())
-  transactionId String  @map("transaction_id") @db.Char(36)
-  name          String  @db.VarChar(64)
-  price         Decimal @db.Decimal(20, 2) // harga satuan
-  estimateDay   Int?    @map("estimateDay")
-  file          String  @db.VarChar(128)
-  note          String? @db.Text
-  rackId        String  @map("rack_id") @db.Char(36)
+  id            String                @id @default(uuid())
+  transactionId String                @map("transaction_id") @db.Char(36)
+  name          String                @db.VarChar(64)
+  price         Decimal               @db.Decimal(20, 2) // harga satuan
+  estimateDay   Int?                  @map("estimateDay")
+  file          String                @db.VarChar(128)
+  size          Int?
+  note          String?               @db.Text
+  rackId        String                @map("rack_id") @db.Char(36)
   status        TransactionItemStatus @default(INCOMING)
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
